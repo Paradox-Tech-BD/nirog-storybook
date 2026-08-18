@@ -56,7 +56,7 @@ sequenceDiagram
   participant OIDC as OIDC verifier
   participant Policy as Profile policy service
   participant DB as identity + domain repositories
-  participant Audit as platform.audit_event
+  participant Audit as platform.audit_events
   Client->>API: Request with bearer token + profileId
   API->>OIDC: Verify issuer, audience, signature, exp, sub
   OIDC-->>API: Local account actor
@@ -97,7 +97,7 @@ All mutations require `Idempotency-Key`. `PATCH` commands use an entity version 
 
 ## 6. Transaction and event behavior
 
-Creating or revoking profile access writes the identity state, `platform.audit_event`, `platform.outbox_event`, and a `platform.change_event` in one transaction. Published events include `profile.access_granted.v1`, `profile.access_revoked.v1`, `profile.consent_changed.v1`, `device.registered.v1`, and `account.deletion_requested.v1`. Receiving modules should invalidate capability/read caches but must not copy the access grant into their own tables.
+Creating or revoking profile access writes the identity state, `platform.audit_events`, `platform.outbox_events`, and a `platform.change_events` record in one transaction. Published events include `profile.access_granted.v1`, `profile.access_revoked.v1`, `profile.consent_changed.v1`, `device.registered.v1`, and `account.deletion_requested.v1`. Receiving modules should invalidate capability/read caches but must not copy the access grant into their own tables.
 
 Invitation acceptance is atomic: validate hashed invitation token and expiry, bind invitee identity, create team membership if applicable, create `profile_access`, change invitation state, audit, and outbox. A retry with the same idempotency key returns the previously created grant; a second accepted action is harmless.
 

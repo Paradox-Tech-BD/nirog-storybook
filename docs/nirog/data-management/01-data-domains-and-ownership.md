@@ -52,7 +52,7 @@ Nirog should name data contracts by purpose. Generic `metadata JSONB` fields may
 | **Command record** | `regimen_item.change_requested` | actor/profile capability context, idempotency key, base version, validated payload, correlation ID |
 | **Domain record** | `regimen.regimen_versions` | aggregate ID, version, state, author, effective dates, source/confirmation reference, timestamps |
 | **Evidence record** | `prescription.field_candidates` | source region/span, raw observation, normalized value, validation finding, stage run, confidence dimensions |
-| **Reference release** | `catalog.catalog_releases` | release ID, state, source/case provenance, immutable manifest/checksum, published date |
+| **Reference release** | `catalog.releases` | release ID, state, source/case provenance, immutable manifest/checksum, published date |
 | **Control record** | `platform.consumer_ledger` | event ID, owner/consumer, status, lease, attempt budget, safe diagnostic, correlation ID |
 | **Audit record** | `platform.audit_events` | actor type/reference, profile scope, action, target, policy decision, correlation, redacted context |
 | **Projection record** | `adherence.planned_dose_occurrences` | source aggregate/version, projection version, state, validity window, rebuild marker |

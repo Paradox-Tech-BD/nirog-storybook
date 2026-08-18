@@ -8,5 +8,4 @@ This migration plan defines an ordered, backward-compatible PostgreSQL rollout f
 
 The rollout uses expand → deploy compatible code → activate/backfill → contract. It deliberately avoids treating broker messages as authoritative state and prevents stale queue payloads from bypassing current permission, release, cancellation, or aggregate-version checks.
 
-Open the complete [Database Migration Plan: Outbox and Worker Retry State Machine](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/10-outbox-worker-state-migrations.md).
-
+Open the complete [Database Migration Plan: Outbox and Worker Retry State Machine](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/technical-analysis/10-outbox-worker-state-migrations.md).

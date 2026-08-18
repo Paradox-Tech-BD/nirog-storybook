@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const operationsFlow = `flowchart TD
+  Change[Specified compatible change] --> Expand[Additive schema/configuration]
+  Expand --> Deploy[Compatible API/workers]
+  Deploy --> Backfill[Bounded idempotent backfill]
+  Backfill --> Activate[Validate and controlled activate]
+  Activate --> Observe[Observe safety and freshness]
+  Observe --> Contract[Remove old path after compatibility window]
+  Observe --> Incident[Contain and diagnose breach]
+  Incident --> Reconcile[Reconcile outbox, ledger, provider, lifecycle]
+  Reconcile --> Restore[Restore/rebuild derived artifacts]
+  Restore --> Verify[Verify invariants before resume]`;
+
+<Meta title="Nirog / 05 System Architecture / 04 Security, Operations, and Evolution / 60 Operations, Recovery, and Evolution Architecture" />
+
+# Operations, Recovery, and Evolution Architecture
+
+Observability links API command, outbox event, worker attempt, provider operation, review payload, regimen action, and recovery case through correlation/causation context. It records redacted operational facts rather than raw prescription data. Changes use expand → compatible deploy → bounded idempotent backfill → validation → activation → observation → contract.
+
+<MermaidDiagram title="Controlled change, incident, reconciliation, and recovery loop" chart={operationsFlow} />
+
+Restore begins in isolation. PostgreSQL canonical records recover first; restricted assets follow manifest/lifecycle rules; outbox/ledger/provider intents, access/lifecycle states, indexes, summaries, and future projections reconcile before normal access resumes. Module extraction remains an evidence-led future decision, not a current deployment requirement.
+
+Read [Observability, Operations, and Recovery Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/09-observability-operations-and-recovery-architecture.md) and [Implementation and Evolution Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/10-implementation-and-evolution-architecture.md).
+

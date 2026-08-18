@@ -23,8 +23,8 @@ sequenceDiagram
   Keys-->>API: Trusted subject and claims
   API->>DB: Find account by issuer + subject
   alt First trusted sign-in
-    API->>DB: Create identity.account and default profile in one transaction
-    API->>DB: Create identity.device_installation if supplied
+    API->>DB: Create identity.accounts record and default profile in one transaction
+    API->>DB: Create identity.devices record if supplied
     API->>Audit: Record account_bootstrapped
   else Existing account
     API->>DB: Check account state and update last_authenticated_at

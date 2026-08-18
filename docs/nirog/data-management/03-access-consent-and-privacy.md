@@ -43,7 +43,7 @@ Consent is not a generic `notifications_enabled` setting. The product should dis
 |---|---|---|
 | `identity.consents` | `id`, `profile_id`, `purpose`, `decision`, `scope`, `policy_version`, `effective_at`, `expires_at`, `revoked_at`, `source_reference`, `recorded_by` | Versioned record of a permitted/denied purpose and applicable boundary. |
 | `identity.profile_access` | `id`, `profile_id`, `grantee_account_id`, `relationship`, `permissions`, `state`, `effective_at`, `expires_at`, `revoked_at`, `granted_by` | Caregiver/delegate relation, separate from identity and consent purpose. |
-| `identity.device_installations` | `id`, `account_id`, `installation_id`, `platform`, `push_token_reference`, `state`, `last_seen_at`, `revoked_at` | Registered device/push endpoint; token value is protected and rotated separately. |
+| `identity.devices` | `id`, `account_id`, `installation_id`, `platform`, `push_token_reference`, `state`, `last_seen_at`, `revoked_at` | Registered device/push endpoint; token value is protected and rotated separately. |
 | `identity.policy_decisions` (optional read/audit projection) | `correlation_id`, `policy_version`, `action`, `outcome`, `reason_code`, `recorded_at` | Redacted evidence of policy behavior, not a replacement for immutable audit event. |
 
 FHIR Consent describes healthcare choices that permit or deny specified recipients/actions for particular purposes and periods. Nirog may map future exchange/partner integration to that concept, but its internal policy engine remains the enforcement point; a consent record alone does not grant database access.[1]
@@ -79,4 +79,3 @@ NIST frames privacy as a risk-management concern, which supports treating egress
 [2] [PostgreSQL Row Security Policies](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
 
 [3] [NIST Privacy Framework](https://www.nist.gov/privacy-framework)
-

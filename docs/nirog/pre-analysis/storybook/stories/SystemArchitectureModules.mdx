@@ -1,0 +1,23 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const moduleMap = `flowchart LR
+  Router[FastAPI route] --> Capability[ActorContext and ProfileCapability]
+  Capability --> Command[Owner command/query service]
+  Command --> Repo[Owner repository]
+  Repo --> Tables[(Owner schema tables)]
+  Command --> Control[Audit, idempotency, outbox]
+  Worker[Worker entrypoint] --> Command
+  Command --> Adapter[Typed external adapter]`;
+
+<Meta title="Nirog / 05 System Architecture / 02 Runtime and Ownership / 54 Module, Code, and Command Architecture" />
+
+# Module, Code, and Command Architecture
+
+Every business record has one owning module: Identity, Catalog, Prescription/ML Evidence, Regimen, Adherence, or Platform. Router code remains thin. It resolves actor/profile capability, validates a typed command, calls the owning application service, and returns a safe response. Repositories write only their module’s tables; worker entrypoints call the same application services instead of duplicating policy.
+
+<MermaidDiagram title="Module command path and controlled dependency structure" chart={moduleMap} />
+
+Cross-module effects use a versioned command service or committed event. An ML worker can persist evidence through Prescription but cannot update Regimen; an Adherence projector can derive future occurrences but cannot rewrite regimen policy. The complete command writes aggregate, audit, idempotency outcome, and outbox row atomically.
+
+Read [Module, Code, and Command Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/03-module-code-and-command-architecture.md).

@@ -35,7 +35,7 @@ The pre-analysis uses the following vocabulary consistently. A later technical p
 | **MedicineProduct** | Shared, release-bound reference-catalog identity. | A patient’s personal medication course. |
 | **MedicationRegimen / RegimenItem** | Profile-private confirmed medication course with a current version. | A catalog product or raw prescription evidence. |
 | **RegimenVersion** | Immutable dosage/timing version for a regimen. | A mutable overwrite of historical instructions. |
-| **DoseEvent / DoseLog** | Append-only report of taken, skipped, snoozed, late, or inferred-missed state. | A notification delivery record. |
+| **DoseEvent / DoseLog** | Append-only report of taken, skipped, late, corrected, or inferred-missed state. | A notification/reminder delivery, acknowledgement, or snooze record. |
 | **Notification / ReminderDelivery** | Delivery, acknowledgement, snooze, expiry, and device telemetry. | Proof of medication consumption. |
 
 ## 4. Subsystem interaction baseline

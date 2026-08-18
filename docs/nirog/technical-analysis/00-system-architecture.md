@@ -21,7 +21,7 @@ flowchart TB
   API --> Core
   Core --> PG[(PostgreSQL)]
   Core --> Assets[(Restricted object storage)]
-  Core --> Outbox[(platform.outbox_event)]
+  Core --> Outbox[(platform.outbox_events)]
   Outbox --> Relay[Outbox relay]
   Relay --> Broker[(Redis-compatible broker)]
 

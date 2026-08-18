@@ -68,7 +68,7 @@ erDiagram
 |---|---|---|
 | `regimen_item` | `id`, profile_id, product/unresolved reference, current_version, status, source review decision | Personal therapy record, not catalog object. |
 | `regimen_version` | regimen item, version number, effective period, dosage JSON, change reason, created_by, policy evidence | Critical change always creates a version; version numbers are monotonically increasing. |
-| `schedule_specification` | regimen version, timezone, timing kind, occurrences, generation rules | Canonical input to local scheduling; notification execution remains device-side. |
+| `schedule_specification` | regimen version, timezone, timing kind, occurrences, generation rules | Canonical input to server-owned occurrence/reminder projection; Flutter may render a local device notification as a delivery channel, never as the authoritative schedule executor. |
 | `planned_dose_occurrence` | regimen version, planned_at, local label, state projection | Generated/derived per schedule policy; preserves old version linkage. |
 | `dose_event` | occurrence/regimen version, event type, occurred_at, reporter, client_event_id, note | Append-only. `system_inferred_missed` differs from a user-reported skip. |
 | `notification_event` | device, occurrence, scheduled/delivery telemetry, failure code | Does not prove a dose occurred. |

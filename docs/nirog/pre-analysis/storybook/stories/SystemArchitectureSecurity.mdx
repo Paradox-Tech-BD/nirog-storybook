@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const securityLayers = `flowchart TB
+  Client[Flutter/Admin] --> Edge[TLS/WAF/rate limits]
+  Client --> OIDC[OIDC provider]
+  Edge --> Verify[Token verifier]
+  Verify --> Actor[ActorContext]
+  Actor --> Policy[Profile, consent, purpose policy]
+  Policy --> Owner[Owner service/repository]
+  Owner --> RLS[(PostgreSQL RLS)]
+  Owner --> Audit[Redacted audit/provenance]
+  Owner --> Asset[Short-lived storage capability]
+  Worker[Scoped worker identity] --> Owner
+  Owner --> Adapter[Allowlisted external adapter]`;
+
+<Meta title="Nirog / 05 System Architecture / 04 Security, Operations, and Evolution / 59 Security, Privacy, and Governance Architecture" />
+
+# Security, Privacy, and Governance Architecture
+
+Security is layered. OIDC authenticates an account actor; Nirog evaluates profile authority independently; owner repositories and RLS constrain records; workload identity constrains workers; private asset capability limits storage; typed adapters control egress; and audit/provenance record sensitive actions without duplicating health content.
+
+<MermaidDiagram title="Layered authority, storage, worker, and egress controls" chart={securityLayers} />
+
+No token, profile ID, team membership, object UUID, or queue message grants health-data authority by itself. Release artifacts—model, prompt/parser, catalog/index, policy, feature, evaluation, retention, migration—are versioned governance records with owner, approval, compatibility, rollout, and rollback/compensation evidence.
+
+Read [Security, Privacy, and Governance Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/08-security-privacy-and-governance-architecture.md).

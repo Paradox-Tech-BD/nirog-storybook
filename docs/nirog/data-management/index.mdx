@@ -1,0 +1,18 @@
+# Data Management Documentation Index
+
+The **Data Management** section defines how Nirog governs sensitive medication-management information through ownership, classification, policy, lineage, versioning, lifecycle, recovery, and safe change control.
+
+| Reading order | Document | Primary outcome |
+|---|---|---|
+| 00 | [Charter and Principles](./00-charter-and-principles.md) | Non-negotiable data decision rules. |
+| 01 | [Data Domains and Ownership](./01-data-domains-and-ownership.md) | Module/schema responsibility and permitted boundaries. |
+| 02 | [Canonical Records and Lineage](./02-canonical-records-and-lineage.md) | Authoritative/rebuildable distinction and explainable data history. |
+| 03 | [Access, Consent, and Privacy](./03-access-consent-and-privacy.md) | Profile-scoped policy, consent, classification, and safe egress. |
+| 04 | [Evidence and ML Data Lifecycle](./04-evidence-and-ml-data-lifecycle.md) | Restricted evidence from upload through review without automatic action. |
+| 05 | [Regimen, Adherence, and Mobile Sync](./05-regimen-adherence-and-mobile-sync.md) | User-confirmed actions, schedule projection, offline intent, and sync. |
+| 06 | [Reference Catalog and Data Quality](./06-reference-catalog-and-data-quality.md) | Curated immutable catalog releases, quality gates, and safe matching. |
+| 07 | [Retention, Recovery, and Operability](./07-retention-recovery-and-operability.md) | Lifecycle controls, backup, restore, purge, reconciliation, and SLOs. |
+| 08 | [Data Change and Migration Governance](./08-data-change-and-migration-governance.md) | Expand/migrate/contract, backfill, compatibility, and rollback evidence. |
+
+The approach deliberately keeps **evidence** distinct from **user-confirmed action**, **profile-private data** distinct from **shared reference data**, and **authoritative records** distinct from **rebuildable projections**. These distinctions align data management with Nirog’s medication-safety boundary.
+

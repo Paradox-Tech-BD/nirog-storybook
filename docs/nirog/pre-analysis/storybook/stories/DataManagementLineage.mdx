@@ -1,0 +1,25 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const lineageFlow = `flowchart TD
+  Asset[Immutable document asset\nchecksum + manifest] --> Stage[Versioned stage run\ninput/execution manifest]
+  Stage --> Candidate[Field and match candidates\nevidence only]
+  Candidate --> Review[Review payload\npolicy + release pinned]
+  Review -->|authorized confirmation| Version[Regimen version\nseparate owned action]
+  Version --> Projection[Schedule and sync projections\nrebuildable]
+  Asset --> Provenance[Provenance links]
+  Stage --> Provenance
+  Review --> Provenance
+  Version --> Audit[Audit decision evidence]`;
+
+<Meta title="Nirog / 03 Data Management / 02 Record Assurance / 34 Canonical Records and Lineage" />
+
+# Canonical Records and Lineage
+
+This page distinguishes authoritative records from derivatives and preserves the provenance chain that explains a result. Original assets, stage manifests, user-confirmed actions, catalog releases, and audit/control records are governed sources. Search indexes, schedule projections, summaries, cache entries, and synchronized mobile representations are disposable derivatives with explicit rebuild inputs.
+
+<MermaidDiagram title="Evidence-to-action lineage is directional" chart={lineageFlow} />
+
+Lineage records source entity, activity, agent, version, policy/release, and input fingerprint. Audit records a separate question: who attempted or performed which policy-governed access or action. The distinction ensures the backend can explain both the origin of a reviewed candidate and the decision that created a regimen.
+
+Read [Canonical Records, Versioning, and Lineage](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/02-canonical-records-and-lineage.md).

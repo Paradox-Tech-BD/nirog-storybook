@@ -1,0 +1,30 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const evidenceState = `stateDiagram-v2
+  [*] --> document_ready
+  document_ready --> processing: authorized scan request
+  processing --> ready_for_review
+  processing --> review_required
+  processing --> manual_entry_recommended
+  processing --> failed
+  ready_for_review --> confirmed_reference: user confirmation
+  review_required --> confirmed_reference: edited confirmation
+  ready_for_review --> cancelled
+  review_required --> cancelled
+  confirmed_reference --> retained
+  cancelled --> retained
+  retained --> purge_pending
+  purge_pending --> purged`;
+
+<Meta title="Nirog / 03 Data Management / 03 Sensitive Health Data / 36 Evidence and ML Data Lifecycle" />
+
+# Evidence and ML Data Lifecycle
+
+The evidence lifecycle preserves an original document asset, derived transforms, stage manifests, model/provider/prompt/release inputs, extracted observations, matching candidates, and a review payload. It produces evidence states such as `ready_for_review`, `review_required`, and `manual_entry_recommended`; it never produces `active_regimen`.
+
+<MermaidDiagram title="Restricted evidence lifecycle" chart={evidenceState} />
+
+Every stage run is lineage-bound to its material inputs. Changed preprocessing, model, parsing schema, catalog release, or policy creates a new lineage; repeated mobile submissions are controlled separately through idempotency. Provider uncertainty is reconciled by deterministic request key before any safe reattempt.
+
+Read [Evidence and ML Data Lifecycle](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/04-evidence-and-ml-data-lifecycle.md).

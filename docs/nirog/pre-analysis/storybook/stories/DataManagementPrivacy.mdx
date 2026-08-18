@@ -1,0 +1,28 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const accessDecision = `sequenceDiagram
+  participant Client as Flutter/admin client
+  participant API as FastAPI policy dependency
+  participant Identity as Grants and consent
+  participant DB as Scoped repository + RLS
+  participant Audit as Redacted audit
+  Client->>API: Token, active profile, action
+  API->>Identity: Recompute capability and purpose
+  Identity-->>API: Allow or deny
+  API->>DB: Set transaction-local scope after allow
+  DB-->>API: Authorized resource result
+  API->>Audit: Record decision/action evidence
+  API-->>Client: Safe response or problem code`;
+
+<Meta title="Nirog / 03 Data Management / 02 Record Assurance / 35 Access, Consent, and Privacy" />
+
+# Access, Consent, and Privacy
+
+Profile access is current evaluated policy, not a permanent boolean. The backend validates account identity, profile relationship/grant, consent/purpose, requested action, target resource, and relevant time/device state before establishing a scoped request capability. Repository filtering and PostgreSQL RLS then provide layered protection for the owned data operation.
+
+<MermaidDiagram title="Current policy evaluation before profile data use" chart={accessDecision} />
+
+Restricted evidence is stored privately and travels by narrow reference/grant, never through generic queue payloads, client sync, public links, or traces. Revocation, account deactivation, device removal, and retention/purge state are rechecked at sensitive worker boundaries as well as API boundaries.
+
+Read [Access, Consent, and Privacy Data Controls](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/03-access-consent-and-privacy.md).

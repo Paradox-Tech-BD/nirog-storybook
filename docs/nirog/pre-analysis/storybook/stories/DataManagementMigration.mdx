@@ -1,0 +1,24 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const migrationFlow = `flowchart LR
+  Specify[Specify\nowner, purpose, risk] --> Expand[Expand\nadditive schema]
+  Expand --> Compatible[Compatible deploy\nold + new readers]
+  Compatible --> Backfill[Backfill/rebuild\nbounded + idempotent]
+  Backfill --> Validate[Validate\nconstraints + reconciliation]
+  Validate --> Activate[Activate\nversioned policy/read path]
+  Activate --> Observe[Observe\nmetrics + rollback window]
+  Observe --> Contract[Contract\nremove old path]`;
+
+<Meta title="Nirog / 03 Data Management / 04 Quality and Continuity / 40 Data Change and Migration Governance" />
+
+# Data Change and Migration Governance
+
+Schema, policy, model, catalog, retention, and backfill changes can alter user-visible meaning or historical explanation. Nirog uses an expand–migrate–contract sequence: additive structures first, compatible readers/writers, bounded idempotent backfill, validation/reconciliation, controlled activation, observation, and only then removal of old paths.
+
+<MermaidDiagram title="Safe data-change lifecycle" chart={migrationFlow} />
+
+Migration evidence includes owner, compatibility contract, backfill checkpoint and counts, constraint/reconciliation result, rollout version, metrics, and rollback/compensation decision. Direct SQL repair of clinical-management history is not an acceptable rollback pattern; a corrective version/action preserves explainability.
+
+Read [Data Change and Migration Governance](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/08-data-change-and-migration-governance.md).
+

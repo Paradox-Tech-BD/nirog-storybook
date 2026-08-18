@@ -1,0 +1,26 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const catalogRelease = `stateDiagram-v2
+  [*] --> source_received
+  source_received --> source_validated
+  source_validated --> curation_open
+  curation_open --> release_drafted
+  release_drafted --> index_building
+  index_building --> release_ready
+  index_building --> validation_failed
+  validation_failed --> curation_open
+  release_ready --> published
+  published --> retired`;
+
+<Meta title="Nirog / 03 Data Management / 04 Quality and Continuity / 38 Reference Catalog and Data Quality" />
+
+# Reference Catalog and Data Quality
+
+The Medicine Catalog is shared reference data with source provenance, curation, immutable release manifests, quality rules, and release-bound search/matching indexes. A correction produces a reviewed successor release. It does not silently rewrite a historic release that influenced a prescription review.
+
+<MermaidDiagram title="Curated catalog release lifecycle" chart={catalogRelease} />
+
+Private user corrections can support the current review experience, but they do not automatically change shared reference data. Promotion requires a curation case, source evidence, review decision, new release, index validation, and rollback path.
+
+Read [Reference Catalog and Data Quality Management](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/06-reference-catalog-and-data-quality.md).

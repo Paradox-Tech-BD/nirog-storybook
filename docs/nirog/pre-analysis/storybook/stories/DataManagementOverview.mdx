@@ -1,0 +1,28 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const dataPlane = `flowchart LR
+  Private[Profile-private plane\nidentity, evidence, regimen, adherence] -->|authorized projections| Mobile[Flutter mobile view]
+  Shared[Shared reference plane\ncurated catalog releases] -->|release-pinned matching| Private
+  Private --> Control[Control plane\naudit, outbox, retention, lineage]
+  Shared --> Control
+  Control -->|reconciliation and policy| Private`;
+
+<Meta title="Nirog / 03 Data Management / 01 Foundations / 32 Data Management Overview" />
+
+# Data Management Overview
+
+Nirog’s Data Management section is a dedicated approach to **ownership, purpose, classification, lineage, access, lifecycle, recovery, and safe change**. It does not repeat the generic reference schema example: it is designed around profile-scoped medication data, restricted prescription evidence, user-confirmed regimens, immutable catalog releases, and a Flutter synchronized view that is never the clinical system of record.
+
+<MermaidDiagram title="Nirog’s data planes" chart={dataPlane} />
+
+## The organizing distinctions
+
+| Distinction | Nirog decision |
+|---|---|
+| Evidence versus action | Model output is reviewable evidence; only an authorized confirmation command can create a regimen version. |
+| Private versus shared | Profile health/evidence data does not passively modify catalog reference data. Shared change requires curation and release. |
+| Authoritative versus derived | Regimens, dose events, evidence manifests, releases, and audit/control records are authoritative; schedules, summaries, indexes, caches, and sync views are rebuildable. |
+| Provenance versus audit | Provenance explains creation/revision; audit records access and policy/action decisions. |
+
+Read the complete [Data Management Approach](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/README.md) and [documentation index](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/index.mdx).

@@ -1,0 +1,30 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const syncFlow = `sequenceDiagram
+  participant App as Flutter local store
+  participant API as Sync API
+  participant Policy as Profile capability
+  participant DB as Canonical records
+  participant Feed as Change feed
+  App->>App: Queue idempotent intent offline
+  App->>API: Intent + client event ID + base version
+  API->>Policy: Recompute authorization
+  API->>DB: Validate and commit action
+  DB->>Feed: Commit scoped change reference
+  API-->>App: Result or version conflict
+  App->>API: Pull opaque profile cursor
+  API->>Feed: Return authorized deltas only
+  Feed-->>App: Resource versions + new cursor`;
+
+<Meta title="Nirog / 03 Data Management / 03 Sensitive Health Data / 37 Regimen, Adherence, and Mobile Sync" />
+
+# Regimen, Adherence, and Mobile Sync
+
+Regimen versions, dose events, and inventory adjustments are user-confirmed or user-recorded canonical actions. Notification delivery is not proof that a dose was taken, and an OCR candidate is not a regimen. Future schedule occurrences, adherence summaries, and mobile deltas are rebuildable projections tied to source aggregate and policy versions.
+
+<MermaidDiagram title="Offline intent and authorized mobile sync" chart={syncFlow} />
+
+Flutter holds a protected, profile-authorized cache and an offline intent outbox. The server resolves authorization, idempotency, base-version conflicts, and cursor scope. It sends resource-version deltas—not raw restricted objects or generic table replication.
+
+Read [Regimen, Adherence, and Mobile Synchronization Data](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/05-regimen-adherence-and-mobile-sync.md).

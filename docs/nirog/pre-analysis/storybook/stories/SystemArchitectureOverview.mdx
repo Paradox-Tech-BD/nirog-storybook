@@ -24,12 +24,16 @@ This parent area is the **single cross-cutting architecture reference** for Niro
 
 <MermaidDiagram title="Nirog unified backend architecture" chart={unifiedMap} />
 
-| Reconciled system rule | Architecture enforcement |
-|---|---|
-| Account identity is not profile authority. | OIDC mapping, current profile capability, repository scope, and RLS. |
-| ML evidence is not medication action. | Worker role constraints, immutable review payload, authorized Regimen command. |
-| Database is authoritative; delivery is at least once. | Aggregate/audit/idempotency/outbox commit, consumer ledger, current-state recheck. |
-| Catalog facts and personal medication are distinct. | Immutable release-bound catalog versus profile-private regimen/version records. |
-| Reminder delivery is not dose evidence. | Separate notification delivery telemetry and append-only dose events. |
+## Reconciled system rules
+
+**Account identity is not profile authority.** The API uses OIDC mapping, a current profile capability, repository scope, and RLS as complementary controls.
+
+**ML evidence is not medication action.** Worker role constraints and immutable review payloads preserve the boundary; an authorized Regimen command is required for medication state.
+
+**The database is authoritative while delivery is at least once.** Aggregate, audit, idempotency, and outbox records commit together; consumers use a ledger and current-state rechecks.
+
+**Catalog facts and personal medication are distinct.** Catalog releases are immutable and shared, whereas regimen and version records are profile-private.
+
+**Reminder delivery is not dose evidence.** Notification delivery telemetry remains separate from append-only dose events.
 
 Open the full [Unified System Architecture folder](https://github.com/Paradox-Tech-BD/nirog-storybook/tree/main/docs/nirog/system-architecture) and its [Architecture Reconciliation Record](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/00-architecture-reconciliation.md).

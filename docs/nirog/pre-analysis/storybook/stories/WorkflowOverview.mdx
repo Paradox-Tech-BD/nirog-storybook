@@ -21,11 +21,14 @@ The **Design Workflows** library consolidates Nirog’s previously distributed b
 
 <MermaidDiagram title="Nirog workflow families and their core relationships" chart={workflowMap} />
 
-| Workflow sequence | Design outcome |
-|---|---|
-| Identity → Evidence | An authenticated account still needs current profile capability and purpose before a private document can be processed. |
-| Catalog + Evidence → Regimen | Catalog matching supplies release-bound candidates; it never activates medication. Evidence requires an explicit, authorized confirmation before a regimen version exists. |
-| Regimen ↔ Flutter | Flutter sends idempotent user intent and receives an authorized change feed; it is not the clinical system of record. |
-| Async + Privacy + Operations | Workers use committed events, current-state rechecks, retry/reconciliation, lifecycle controls, and recovery operations. |
+## Core workflow outcomes
+
+**Identity → Evidence.** An authenticated account still needs current profile capability and purpose before a private document can be processed.
+
+**Catalog + Evidence → Regimen.** Catalog matching supplies release-bound candidates; it never activates medication. Evidence requires an explicit, authorized confirmation before a regimen version exists.
+
+**Regimen ↔ Flutter.** Flutter sends idempotent user intent and receives an authorized change feed; it is not the clinical system of record.
+
+**Async + Privacy + Operations.** Workers use committed events, current-state rechecks, retry/reconciliation, lifecycle controls, and recovery operations.
 
 Read the full [Design Workflows root](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/README.md).

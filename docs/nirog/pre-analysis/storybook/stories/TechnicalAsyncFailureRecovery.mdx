@@ -1,0 +1,75 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const detailedWorkerRecovery = `sequenceDiagram
+  autonumber
+  participant API as FastAPI command
+  participant DB as PostgreSQL
+  participant Relay as Outbox relay
+  participant Broker as Broker
+  participant Worker as Scoped worker
+  participant Ledger as Consumer ledger
+  participant Provider as External provider
+  participant DLQ as Dead-letter workflow
+
+  API->>DB: Commit aggregate, audit, idempotency, outbox
+  DB-->>API: 202 Accepted or committed response
+  loop lease and relay after commit
+    Relay->>DB: Claim unpublished outbox event
+    Relay->>Broker: Publish stable event envelope
+    Note over Relay,Broker: Relay crash after publish can cause duplicate delivery
+  end
+  Broker->>Worker: Deliver event at least once
+  Worker->>Ledger: Claim consumer + event ID lease
+  alt ledger is completed
+    Ledger-->>Worker: Duplicate delivery
+    Worker-->>Broker: Acknowledge without effect
+  else source state is superseded or cancelled
+    Worker->>DB: Re-read aggregate/stage and record no-op
+    Worker->>Ledger: Mark superseded or cancelled
+    Worker-->>Broker: Acknowledge
+  else source state and version are valid
+    Worker->>DB: Persist provider intent with deterministic key
+    Worker->>Provider: Execute request with idempotency key
+    alt provider accepted or returned result
+      Provider-->>Worker: Result or accepted status
+      Worker->>DB: Owned effect + follow-on outbox event
+      Worker->>Ledger: Mark completed with output reference
+      Worker-->>Broker: Acknowledge after commit
+    else transient dependency or quota fault
+      Provider-->>Worker: Timeout, 429, or retryable 5xx
+      Worker->>Ledger: Record class and next eligible attempt
+      Worker->>DB: Persist bounded retry schedule
+      Worker-->>Broker: Defer or reject for delayed redelivery
+    else provider outcome unknown after connection loss
+      Provider-->>Worker: Connection lost after possible acceptance
+      Worker->>Ledger: Mark outcome_unknown
+      Worker->>DB: Persist reconciliation request
+      Note over Worker,Provider: Reconcile by deterministic provider key before any resend
+    else permanent input, policy, or contract fault
+      Worker->>DB: Mark terminal result and safe reason
+      Worker->>Ledger: Mark terminal_failed
+      Worker->>DLQ: Create redacted recovery record
+      Worker-->>Broker: Acknowledge terminal handling
+    end
+  end
+  DLQ->>DB: Requeue only from current authoritative state
+  Note over Worker,DLQ: Workers never write regimen, adherence, or profile access outside ownership`;
+
+<Meta title="Nirog / 02 Technical Analysis / 03 Async Reliability / 26 Detailed Worker Failure Recovery" />
+
+# Detailed Worker Failure Recovery
+
+This sequence diagram shows the end-to-end handling of a committed asynchronous effect—from the original FastAPI transaction to outbox publication, duplicate delivery, scoped execution, provider uncertainty, retries, and dead-letter recovery.
+
+<MermaidDiagram title="Async worker sequence: committed event through safe recovery" chart={detailedWorkerRecovery} />
+
+## How to read the diagram
+
+The **outbox** separates durable domain commitment from later task delivery. Relay duplication is deliberately tolerated. The **consumer ledger** makes completed owned effects idempotent, while a re-read of current aggregate/stage state turns stale or cancelled work into a safe no-op.
+
+Only temporary, still-relevant faults receive a bounded retry. Corrupt inputs, policy denials, revoked access, and incompatible event/configuration contracts end safely rather than loop. When an external provider response is lost after a request might have been accepted, the worker reconciles with the deterministic provider key before deciding whether another request is valid.
+
+Dead-letter handling is an operator workflow: it classifies the event as requeue, cancel, supersede, manual resolution, or defect remediation, then creates a fresh attempt from authoritative state where appropriate. It never blindly republishes an old queue payload.
+
+Read the complete [Asynchronous Workers, Queues, and Reliability Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/04-async-workers.md) and [Detailed Failure Handling and Security Review](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/07-async-failure-and-security-review.md).

@@ -16,6 +16,7 @@
 | [`07-async-failure-and-security-review.md`](./07-async-failure-and-security-review.md) | Detailed worker lifecycle, retry/DLQ/reconciliation controls, and layered authentication/security enforcement. |
 | [`08-deployment-and-scaling-guide.md`](./08-deployment-and-scaling-guide.md) | Deployable workload units, scaling signals, rollout/migration controls, capacity governance, and recovery drills. |
 | [`presentation-script.md`](./presentation-script.md) | Speaker-ready script summarizing the pre-analysis and ML integration. |
+| [`technical-analysis-presentation-script.md`](./technical-analysis-presentation-script.md) | Speaker-ready script explaining the complete backend technical architecture. |
 | [`references.md`](./references.md) | Technical-analysis source register. |
 
 ## Design posture

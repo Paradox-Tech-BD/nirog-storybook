@@ -1,0 +1,11 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Nirog / 02 Technical Analysis / 04 Platform Security and Operations / 30 Static Edge-Case Coverage" />
+
+# Static Edge-Case Coverage
+
+This constructive static review extends the existing backend architecture with explicit acceptance controls for cases that appear under retries, partial failures, authorization changes, and operational recovery. It treats PostgreSQL state, approved releases, current consent/authorization, and immutable evidence lineage as authoritative; queue payloads, cache values, URLs, and provider responses are inputs that must be revalidated.
+
+The review adds coverage for relay lease fencing, event ordering gaps, worker pause races, payload validation, retry storms, provider response loss, idempotency retention, RLS connection-pool isolation, access revocation during queued work, evidence purge races, model-output validation, telemetry redaction, secret rotation, and secure DLQ recovery.
+
+Open the complete [Static Architecture and Security Coverage Extensions](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/09-static-edge-case-coverage.md).

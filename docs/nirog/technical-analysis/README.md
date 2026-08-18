@@ -15,8 +15,11 @@
 | [`06-operations-deployment.md`](./06-operations-deployment.md) | Environment topology, secrets, observability, release gates, backups, and runbooks. |
 | [`07-async-failure-and-security-review.md`](./07-async-failure-and-security-review.md) | Detailed worker lifecycle, retry/DLQ/reconciliation controls, and layered authentication/security enforcement. |
 | [`08-deployment-and-scaling-guide.md`](./08-deployment-and-scaling-guide.md) | Deployable workload units, scaling signals, rollout/migration controls, capacity governance, and recovery drills. |
+| [`09-static-edge-case-coverage.md`](./09-static-edge-case-coverage.md) | Static architecture/security coverage extensions for failure races, authorization changes, evidence handling, and operational containment. |
+| [`10-outbox-worker-state-migrations.md`](./10-outbox-worker-state-migrations.md) | Ordered PostgreSQL migrations for the outbox, consumer retry ledger, provider intent, DLQ, and reconciliation state. |
 | [`presentation-script.md`](./presentation-script.md) | Speaker-ready script summarizing the pre-analysis and ML integration. |
 | [`technical-analysis-presentation-script.md`](./technical-analysis-presentation-script.md) | Speaker-ready script explaining the complete backend technical architecture. |
+| [`technical-analysis-deck-structure.md`](./technical-analysis-deck-structure.md) | Concise 12-slide structure for the Technical Analysis overview presentation. |
 | [`references.md`](./references.md) | Technical-analysis source register. |
 
 ## Design posture

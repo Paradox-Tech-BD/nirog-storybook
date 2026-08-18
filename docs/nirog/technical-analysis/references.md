@@ -11,5 +11,6 @@
 | [Kubernetes Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) | Resource/custom metric autoscaling principles for separately scaled API and worker workloads. |
 | [PostgreSQL High Availability, Load Balancing, and Replication](https://www.postgresql.org/docs/current/different-replication-solutions.html) | Read-replica consistency and replication trade-offs in the deployment guide. |
 | [PostgreSQL `CREATE INDEX`](https://www.postgresql.org/docs/current/sql-createindex.html) | Concurrent index-build and migration operational considerations. |
+| [PostgreSQL DDL Constraints](https://www.postgresql.org/docs/current/ddl-constraints.html) | Constraint rollout and validation considerations for additive worker-state migrations. |
 
 The technical recommendations in this pack combine these sources with the Nirog pre-analysis. They remain implementation architecture, not a claim that any named vendor or library is mandatory.

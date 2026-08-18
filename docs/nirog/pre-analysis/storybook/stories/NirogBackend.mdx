@@ -1,0 +1,37 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const overviewMap = `flowchart LR
+  App[Flutter mobile app] --> API[FastAPI core API]
+  API --> UM[User Management]
+  API --> PM[Prescription and ML Evidence]
+  API --> RM[Medication Regimen]
+  PM --> MC[Medicine Catalog]
+  PM --> RM
+  RM --> AO[Adherence and Notifications]
+  AO --> App
+  API --> PX[Platform: Sync, Audit, Policy]`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 01 Foundations / 00 Overview" />
+
+# Nirog Backend Blueprint
+
+This is the complete native Storybook documentation experience for the Nirog backend. The sidebar contains the architecture, subsystem boundaries, schemas, API contract, interactions, and class diagrams that are also preserved as Notion-ready source documents in this fork.
+
+## Core product boundary
+
+Nirog turns a user-provided prescription into **reviewable evidence**. It does not allow an OCR result to silently create an active medication schedule. A patient profile receives a medication regimen only after an authorised user confirms the medicine identity and instruction.
+
+## What the backend owns
+
+The backend protects profile-scoped health data, stores prescription evidence, runs asynchronous ML extraction, resolves candidate products from a released Bangladesh medicine catalog, versions confirmed medication instructions, produces schedule rules, records adherence events, and maintains a traceable audit history.
+
+<MermaidDiagram title="Nirog overview" chart={overviewMap} />
+
+## Reading order
+
+Open **01 System Map** for the subsystem boundaries. Then read **02 User Management** and **03 Medicine Catalog**, followed by **04 Prescription and ML Evidence** and **05 Medication Regimen and Adherence**. The final pages show commands/events, table ownership, API surfaces, and the complete application class model.
+
+## Canonical source repository
+
+Every page shown here is backed by version-controlled source in the official fork. The full source documents remain available in [`docs/nirog`](https://github.com/Paradox-Tech-BD/nirog-storybook/tree/next/docs/nirog) for direct copying into Notion.

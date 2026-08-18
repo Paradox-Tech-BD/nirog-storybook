@@ -1,0 +1,90 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const scanFlow = `sequenceDiagram
+  autonumber
+  participant App as Flutter App
+  participant PM as Prescription and ML Evidence
+  participant Store as Object Storage
+  participant Worker as ML Worker
+  participant MC as Medicine Catalog
+  App->>PM: Create prescription document
+  PM-->>App: Signed upload capability
+  App->>Store: Upload page image
+  App->>PM: Create scan job with idempotency key
+  PM-->>App: Scan job queued
+  PM->>Worker: Process scan job
+  Worker->>Store: Read source page
+  Worker->>Worker: Preprocess, OCR, extract fields
+  Worker->>MC: Search released product index
+  MC-->>Worker: Ranked candidates
+  Worker->>PM: Persist evidence and policy result
+  PM-->>App: Review payload`;
+
+export const evidenceModel = `classDiagram
+  class PrescriptionDocument {
+    +UUID id
+    +UUID patientProfileId
+    +DocumentStatus status
+    +Int documentVersion
+  }
+  class DocumentPage {
+    +UUID id
+    +UUID documentId
+    +Int pageNumber
+    +String originalAssetId
+  }
+  class OCRScan {
+    +UUID id
+    +UUID documentId
+    +ScanStatus status
+    +String currentStage
+    +enqueue()
+    +retry()
+  }
+  class OCRLine {
+    +UUID id
+    +UUID scanId
+    +JSON region
+    +String verbatimText
+  }
+  class ExtractedMedicationLine {
+    +UUID id
+    +UUID scanId
+    +ReviewState reviewState
+    +PolicyOutcome policyOutcome
+  }
+  class MedicationReview {
+    +UUID id
+    +UUID scanId
+    +ReviewDecision decision
+    +UUID selectedProductId
+    +JSON editedInstruction
+  }
+  PrescriptionDocument "1" --> "1..*" DocumentPage : contains
+  PrescriptionDocument "1" --> "0..*" OCRScan : creates
+  OCRScan "1" --> "0..*" OCRLine : produces
+  OCRScan "1" --> "0..*" ExtractedMedicationLine : extracts
+  OCRScan "1" --> "0..*" MedicationReview : receives`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 02 Domain Architecture / 04 Prescription and ML Evidence" />
+
+# Prescription and ML Evidence
+
+This subsystem owns the original document, the asynchronous scan job, OCR evidence, extracted fields, candidate matches, and review decisions. It is deliberately separate from a medication regimen: the model may assist with extraction, but it never activates a schedule by itself.
+
+## Scan workflow
+
+<MermaidDiagram title="Prescription scan workflow" chart={scanFlow} />
+
+## Evidence model
+
+<MermaidDiagram title="Prescription evidence classes" chart={evidenceModel} />
+
+## Review outcomes
+
+The scan policy returns one of four outcomes. `ready_for_review` means the app can show a preselected candidate. `review_required` means medication-critical fields need confirmation. `manual_entry_recommended` means the image or matching evidence is insufficient. `failed` means a technical processing issue occurred. None of these outcomes is a clinical judgment.
+
+## Release provenance
+
+Every scan records the preprocessor release, vision model release, extraction schema version, abbreviation release, catalog release, index release, and matching-policy release. This makes each result reproducible when the ML service or catalog evolves.

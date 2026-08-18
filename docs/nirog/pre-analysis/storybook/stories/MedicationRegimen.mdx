@@ -1,0 +1,117 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const regimenModel = `classDiagram
+  class MedicationRegimen {
+    +UUID id
+    +UUID patientProfileId
+    +UUID medicineProductId
+    +UUID unresolvedMedicationId
+    +RegimenStatus status
+    +Int currentVersion
+    +pause()
+    +resume()
+    +end()
+  }
+  class RegimenVersion {
+    +UUID id
+    +UUID regimenId
+    +Int versionNumber
+    +JSON dosageInstruction
+    +DateTime startDate
+    +DateTime endDate
+    +createVersion()
+  }
+  class ScheduleRule {
+    +UUID id
+    +UUID regimenVersionId
+    +ScheduleType type
+    +JSON timingRule
+    +String timezone
+  }
+  class PlannedDose {
+    +UUID id
+    +UUID regimenVersionId
+    +DateTime scheduledAt
+    +DoseProjectionState state
+  }
+  class InventoryMovement {
+    +UUID id
+    +UUID regimenId
+    +MovementType type
+    +Decimal quantity
+    +String baseUnit
+  }
+  class RefillRule {
+    +UUID id
+    +UUID regimenId
+    +Decimal thresholdQuantity
+    +String baseUnit
+  }
+  MedicationRegimen "1" --> "1..*" RegimenVersion : versions
+  RegimenVersion "1" --> "0..*" ScheduleRule : defines
+  RegimenVersion "1" --> "0..*" PlannedDose : projects
+  MedicationRegimen "1" --> "0..*" InventoryMovement : tracks
+  MedicationRegimen "1" --> "0..1" RefillRule : configures`;
+
+export const adherenceModel = `classDiagram
+  class DoseLog {
+    +UUID id
+    +UUID plannedDoseId
+    +UUID regimenVersionId
+    +DoseStatus status
+    +DateTime scheduledTime
+    +DateTime actualTime
+    +String clientEventId
+    +logDose()
+  }
+  class Notification {
+    +UUID id
+    +UUID reminderId
+    +NotificationType type
+    +NotificationStatus status
+    +DateTime sentAt
+    +acknowledge()
+  }
+  class RefillAlert {
+    +UUID id
+    +UUID regimenId
+    +Decimal thresholdQuantity
+    +Boolean acknowledged
+  }
+  class RefillHistory {
+    +UUID id
+    +UUID regimenId
+    +Decimal quantityAdded
+    +String baseUnit
+    +DateTime refillDate
+  }
+  class AdherenceStats {
+    +UUID id
+    +UUID patientProfileId
+    +Date periodStart
+    +Date periodEnd
+    +Float percentage
+    +calculate()
+  }
+  PlannedDose "1" --> "0..*" DoseLog : records
+  RefillAlert "1" --> "0..*" Notification : triggers
+  MedicationRegimen "1" --> "0..*" RefillHistory : records`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 02 Domain Architecture / 05 Medication Regimen and Adherence" />
+
+# Medication Regimen and Adherence
+
+The regimen subsystem owns the confirmed medication course. It is distinct from a catalog product and from OCR evidence. A regimen connects a patient profile to either an approved product or a private unresolved medication. Its medication-critical instructions are versioned so that historical dose events stay meaningful after an edit.
+
+## Regimen and scheduling model
+
+<MermaidDiagram title="Medication regimen model" chart={regimenModel} />
+
+## Adherence and notification model
+
+<MermaidDiagram title="Adherence and notification model" chart={adherenceModel} />
+
+## Important rule
+
+A reminder delivery is not evidence of medication consumption. `Notification` records that a reminder was scheduled, sent, acknowledged, snoozed, or expired. `DoseLog` records what the user reported: taken, skipped, late, or a system-inferred missed state. Adherence statistics are projections derived from dose logs, not a replacement for them.

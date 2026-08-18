@@ -1,0 +1,79 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const userModel = `classDiagram
+  class User {
+    +UUID id
+    +String email
+    +String name
+    +UserStatus status
+    +register()
+    +login()
+  }
+  class AuthProvider {
+    +UUID id
+    +UUID userId
+    +AuthType provider
+    +String providerSubject
+  }
+  class UserPreference {
+    +UUID id
+    +UUID userId
+    +String language
+    +String timezone
+    +Boolean notificationsEnabled
+  }
+  class PatientProfile {
+    +UUID id
+    +UUID ownerUserId
+    +String name
+    +String relationship
+    +ProfileStatus status
+  }
+  class ProfileAccess {
+    +UUID id
+    +UUID patientProfileId
+    +UUID grantedToUserId
+    +ProfileRole role
+    +JSON permissions
+    +grant()
+    +revoke()
+  }
+  class Team {
+    +UUID id
+    +String name
+    +UUID ownerId
+  }
+  class TeamMember {
+    +UUID id
+    +UUID teamId
+    +UUID userId
+    +TeamRole role
+  }
+  User "1" --> "0..*" AuthProvider : authenticates
+  User "1" --> "1" UserPreference : has
+  User "1" --> "0..*" PatientProfile : owns
+  User "1" --> "0..*" ProfileAccess : receives
+  PatientProfile "1" --> "0..*" ProfileAccess : shares
+  Team "1" --> "0..*" TeamMember : contains
+  User "1" --> "0..*" TeamMember : joins`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 02 Domain Architecture / 02 User Management" />
+
+# User Management
+
+This subsystem is the permission boundary for all profile-scoped health information. A **User** is an authenticated application account. A **PatientProfile** is the medication-management context for the owner or dependent. The two must not be treated as the same record.
+
+<MermaidDiagram title="User management class model" chart={userModel} />
+
+## Ownership
+
+User Management owns `users`, `auth_providers`, `user_preferences`, `devices`, `patient_profiles`, `teams`, `team_members`, `team_invitations`, `profile_access`, and `consent_records`.
+
+## Permission rule
+
+Team membership is not automatic patient access. Every document, scan, regimen, dose log, and notification request checks an effective `ProfileAccess` grant for the requested patient profile. The grant is explicit, role-based, revocable, and audited.
+
+## Integration outputs
+
+Other subsystems receive a profile identifier and a resolved permission decision; they do not duplicate identity rows. User Management also provides timezone and device-preference snapshots used by reminder delivery.

@@ -1,0 +1,61 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const profileAccessFlow = `sequenceDiagram
+  autonumber
+  participant App as Flutter App
+  participant IAM as User Management
+  participant Policy as Profile Policy
+  participant API as Health Data API
+  participant Audit as Audit Log
+  App->>IAM: Authenticate account and device
+  IAM-->>App: Access token and account preferences
+  App->>IAM: List visible patient profiles
+  IAM->>Policy: Resolve active profile memberships
+  Policy-->>IAM: Effective permissions by profile
+  IAM-->>App: Profile summaries and permission scopes
+  App->>API: Read profile-scoped resource
+  API->>Policy: Check actor, profile, action, resource
+  alt Permission granted
+    Policy-->>API: Allow with field policy
+    API->>Audit: Record allowed access
+    API-->>App: Authorized representation
+  else Permission denied
+    Policy-->>API: Deny
+    API->>Audit: Record denial
+    API-->>App: Forbidden problem response
+  end`;
+
+export const caregiverShareFlow = `sequenceDiagram
+  autonumber
+  participant Owner as Profile Owner
+  participant IAM as User Management
+  participant Invitee as Caregiver
+  participant Policy as Profile Policy
+  Owner->>IAM: Create team invitation(role, profile scope)
+  IAM-->>Invitee: Signed invitation notification
+  Invitee->>IAM: Accept invitation
+  IAM->>Policy: Create profile membership with permissions
+  Policy-->>IAM: Active or pending-consent membership
+  IAM-->>Owner: Membership created
+  IAM-->>Invitee: Profile visible with scoped permissions`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 04 Subsystem Flows / 13 User Management Flows" />
+
+# User Management Interaction Flows
+
+User Management is the authority boundary, not merely login storage. It determines which profiles the actor can see and which fields/actions they may access for every request. A patient profile can be the account owner’s own context or a dependent’s context; an account never acquires healthcare-data access merely by knowing a profile ID.
+
+## Authenticate, select profile, and access data
+
+<MermaidDiagram title="Profile-scoped access flow" chart={profileAccessFlow} />
+
+## Share a dependent profile with a caregiver
+
+<MermaidDiagram title="Caregiver invitation and sharing flow" chart={caregiverShareFlow} />
+
+## Interaction contract
+
+User Management publishes an effective permission decision, profile status, device settings, and user timezone. Prescription, regimen, adherence, and sync modules call the policy contract before loading profile-scoped data. They do not copy profile memberships or make authorization decisions from a client-provided account ID.
+
+Membership can be revoked without deleting the profile. A raw-image permission is narrower than a general caregiver role, and consent for sharing remains distinct from optional research consent.

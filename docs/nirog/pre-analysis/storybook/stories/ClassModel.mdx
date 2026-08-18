@@ -1,0 +1,132 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const applicationModel = `classDiagram
+  class User {
+    +UUID id
+    +String email
+    +String name
+    +UserRole role
+    +login()
+    +resetPassword()
+  }
+  class PatientProfile {
+    +UUID id
+    +UUID ownerUserId
+    +String name
+    +String relationship
+    +switchTo()
+  }
+  class ProfileAccess {
+    +UUID id
+    +UUID patientProfileId
+    +UUID grantedToUserId
+    +ProfileRole role
+    +grant()
+    +revoke()
+  }
+  class MedicineProduct {
+    +UUID id
+    +String brandName
+    +String genericDisplay
+    +String strengthDisplay
+    +String dosageForm
+  }
+  class MedicationRegimen {
+    +UUID id
+    +UUID patientProfileId
+    +UUID medicineProductId
+    +RegimenStatus status
+    +Int currentVersion
+    +pause()
+    +resume()
+    +end()
+  }
+  class RegimenVersion {
+    +UUID id
+    +UUID regimenId
+    +JSON dosageInstruction
+    +DateTime startDate
+    +DateTime endDate
+  }
+  class PrescriptionDocument {
+    +UUID id
+    +UUID patientProfileId
+    +DocumentStatus status
+  }
+  class OCRScan {
+    +UUID id
+    +UUID documentId
+    +ScanStatus status
+    +extractFields()
+  }
+  class MedicationReview {
+    +UUID id
+    +UUID scanId
+    +ReviewDecision decision
+    +acceptMatch()
+    +saveUnresolved()
+  }
+  class Reminder {
+    +UUID id
+    +UUID regimenVersionId
+    +ScheduleType scheduleType
+    +JSON timingRule
+    +snooze()
+  }
+  class DoseLog {
+    +UUID id
+    +UUID plannedDoseId
+    +DoseStatus status
+    +DateTime actualTime
+    +logDose()
+  }
+  class RefillAlert {
+    +UUID id
+    +UUID regimenId
+    +Decimal thresholdQuantity
+    +checkThreshold()
+  }
+  class Notification {
+    +UUID id
+    +UUID reminderId
+    +NotificationStatus status
+    +acknowledge()
+  }
+  class AdherenceStats {
+    +UUID id
+    +UUID patientProfileId
+    +Float percentage
+    +calculate()
+  }
+  User "1" --> "0..*" PatientProfile : owns
+  User "1" --> "0..*" ProfileAccess : receives
+  PatientProfile "1" --> "0..*" ProfileAccess : shares
+  PatientProfile "1" --> "0..*" PrescriptionDocument : contains
+  PrescriptionDocument "1" --> "0..*" OCRScan : creates
+  OCRScan "1" --> "0..*" MedicationReview : produces
+  MedicationReview "0..1" --> "1" MedicationRegimen : activates
+  PatientProfile "1" --> "0..*" MedicationRegimen : manages
+  MedicineProduct "1" --> "0..*" MedicationRegimen : identifies
+  MedicationRegimen "1" --> "1..*" RegimenVersion : versions
+  RegimenVersion "1" --> "0..*" Reminder : schedules
+  RegimenVersion "1" --> "0..*" DoseLog : tracks
+  MedicationRegimen "1" --> "0..1" RefillAlert : monitors
+  Reminder "1" --> "0..*" Notification : triggers
+  PatientProfile "1" --> "0..*" AdherenceStats : generates`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 03 Models and Contracts / 09 Application Class Model" />
+
+# Application Class Model
+
+This is the merged class model created from the original Nirog UML classes and the backend evidence, catalog, regimen, and sync requirements. It retains the user-facing concepts—users, preferences, profiles, medicine, OCR scan, reminders, dose logs, refill data, notifications, and adherence statistics—while refining their ownership boundaries.
+
+<MermaidDiagram title="Complete Nirog application class model" chart={applicationModel} />
+
+## Merge decisions
+
+The original `Medicine` class becomes two concepts: `MedicineProduct` is shared released catalog data, while `MedicationRegimen` is the profile-private medication course. The original `OCRScan` is part of a three-stage boundary: `PrescriptionDocument` preserves the source, `OCRScan` stores ML processing, and `MedicationReview` stores the user decision. A `RegimenVersion` prevents instruction edits from changing historical dose records.
+
+## Canonical detailed source
+
+The extended class model, including the supporting ML and catalog classes, is maintained in [`docs/nirog/pre-analysis/schemas/application-class-model.mdx`](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/pre-analysis/schemas/application-class-model.mdx).

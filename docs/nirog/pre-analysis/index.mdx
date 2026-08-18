@@ -1,0 +1,33 @@
+---
+title: Nirog General Pre-Analysis
+sidebar:
+  order: 901
+---
+
+# Nirog General Pre-Analysis
+
+This folder contains the completed **general pre-analysis** for Nirog. It establishes the product boundary, user and caregiver context, safety rules, ML evidence model, domain concepts, subsystem interactions, logical schemas, API baseline, operations posture, decisions, and source register. It is the approved conceptual input for a later technical-analysis phase; it is not an implementation plan by itself.
+
+> **Current state:** The general pre-analysis is complete. Technical analysis is deliberately paused and will begin only when the product owner explicitly requests it.
+
+## Start here
+
+The [Final General Pre-Analysis Coherence Check](./final-coherence-check.md) is the handoff document. It records the settled product positions, canonical vocabulary, deferred implementation choices, and the order in which technical analysis should proceed later.
+
+## Pre-analysis map
+
+| Area | Content |
+|---|---|
+| Product foundation | [Backend Blueprint](./backend-blueprint.mdx), [`requirements/`](./requirements/) |
+| System concepts and flows | [`architecture/`](./architecture/) |
+| Logical data concepts | [`schemas/`](./schemas/) |
+| Proposed HTTP contract | [`api/openapi.yaml`](./api/openapi.yaml) |
+| Operational and lifecycle boundary | [`operations/`](./operations/) |
+| Long-lived conceptual decisions | [`adr/`](./adr/) |
+| Whitepaper and research record | [`references/`](./references/) |
+| Notion-derived ML integration guidance | [`ml-integration/`](./ml-integration/) |
+| Interactive documentation presentation | [`storybook/`](./storybook/) |
+
+## Scope boundary
+
+Future technical-analysis outputs will be created separately under `docs/nirog/technical-analysis/` after authorization. They must cite the pre-analysis artifact they refine and must not quietly alter the safety, evidence, profile-access, catalog, or confirmation boundaries without an explicit product decision.

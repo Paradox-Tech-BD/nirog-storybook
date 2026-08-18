@@ -1,0 +1,31 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const operationsTopology = `flowchart TB
+  Edge[WAF and API ingress] --> API[Core API replicas]
+  API --> DB[(PostgreSQL)]
+  API --> Store[(Private object storage)]
+  API --> Broker[(Broker)]
+  Broker --> General[General workers]
+  Broker --> ML[ML workers]
+  Broker --> Catalog[Catalog workers]
+  API --> Telemetry[Traces, metrics, redacted logs]
+  General --> Telemetry
+  ML --> Telemetry
+  Catalog --> Telemetry`;
+
+<Meta title="Nirog / 02 Technical Analysis / 04 Platform Security and Operations / 22 Technical Platform and Operations" />
+
+# Platform, Security, and Operations
+
+The platform architecture provides versioned API contracts, idempotent mutation, optimistic concurrency, row-level defense, audit, change feed, feature flags, retention jobs, observability, backups, and controlled deployment promotion.
+
+<MermaidDiagram title="Production runtime topology" chart={operationsTopology} />
+
+## Operational posture
+
+Nirog separates development, staging, and production. Production uses stateless API replicas, private object storage, managed PostgreSQL, scoped service identities, queue-isolated worker pools, secret management, encrypted backups, and trace/metric/log telemetry that excludes raw prescription content.
+
+ML, parser, catalog, index, and review-policy changes are independently versioned release artifacts with evaluation and rollback paths. A costly ML outage must degrade to retry or manual entry without blocking essential medication records.
+
+Read [API, Persistence, and Security Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/05-api-persistence-security.md) and [Operations and Deployment Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/06-operations-deployment.md).

@@ -1,0 +1,116 @@
+---
+title: Nirog Subsystem Interactions
+sidebar:
+  order: 904
+---
+
+# Nirog Subsystem Interactions
+
+This document defines how the Nirog subsystems connect without bypassing data ownership. A module may read another module’s approved projection, but it does not update that module’s tables directly. Cross-subsystem writes happen through a command handled by the owning module. Asynchronous consequences are published as outbox events.
+
+## 1. Interaction contract map
+
+```mermaid
+flowchart LR
+    UM[User Management]
+    MC[Medicine Catalog]
+    PM[Prescription and ML Evidence]
+    RM[Medication Regimen]
+    AO[Adherence and Notifications]
+    PX[Platform: Auth, Audit, Sync]
+
+    UM -->|ResolveProfileAccess| PM
+    UM -->|ResolveProfileAccess| RM
+    UM -->|Device and preference read model| AO
+    MC -->|SearchProducts and ResolveProduct| PM
+    PM -->|CreateRegimenFromReview command| RM
+    RM -->|RegimenVersionActivated event| AO
+    RM -->|RefillRuleChanged event| AO
+    AO -->|DoseLogged event| RM
+    AO -->|RefillRecorded event| RM
+    AO -->|AdherenceProjected event| RM
+    PX --- UM
+    PX --- PM
+    PX --- RM
+    PX --- AO
+```
+
+## 2. Commands and events
+
+| Producer | Consumer | Contract | Type | Required data |
+|---|---|---|---|---|
+| Mobile client through API | User Management | `CreatePatientProfile` | Command | Actor ID, display data, owner ID. |
+| Mobile client through API | Prescription/ML Evidence | `CreateScanJob` | Command | Profile ID, document ID, idempotency key. |
+| Prescription/ML Evidence | Medicine Catalog | `SearchProducts` | Query | Normalized name/strength/form candidates and active catalog release. |
+| Mobile client through API | Prescription/ML Evidence | `RecordMedicationReview` | Command | Evidence version, decision, selected product or edited fields. |
+| Prescription/ML Evidence | Medication Regimen | `CreateRegimenFromReview` | Command | Profile ID, review ID, selected product/unresolved item, confirmed instruction. |
+| Medication Regimen | Adherence/Notifications | `RegimenVersionActivated` | Event | Regimen/version IDs, profile ID, schedule specification, timezone. |
+| Adherence/Notifications | Medication Regimen | `DoseLogged` | Event | Planned-dose ID, regimen version ID, event type, occurred time, client event ID. |
+| Mobile client through API | Adherence/Notifications | `RecordRefill` | Command | Regimen ID, quantity added, unit, occurred time. |
+| Adherence/Notifications | Mobile client through Sync | `NotificationStateChanged` | Change event | Notification ID, delivery/acknowledgement/snooze state. |
+| Every subsystem | Platform | `AuditAction` | Event | Actor, profile scope, action, entity, outcome, request trace. |
+
+## 3. Prescription-to-regimen interaction
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as Flutter App
+    participant UM as User Management
+    participant PM as Prescription and ML Evidence
+    participant MC as Medicine Catalog
+    participant RM as Medication Regimen
+    participant AO as Adherence and Notifications
+    participant PX as Platform Audit and Sync
+
+    App->>UM: Resolve profile access(profile_id, action=scan_create)
+    UM-->>App: access granted
+    App->>PM: Create scan job(document_id, profile_id, idempotency_key)
+    PM->>PX: AuditAction(scan_created)
+    PM->>MC: Search products(extracted fields, catalog release)
+    MC-->>PM: Ranked product candidates
+    PM-->>App: Review payload with evidence and candidates
+    App->>PM: Record medication review(decision, selected product, instruction)
+    PM->>RM: CreateRegimenFromReview(review_id, profile_id)
+    RM->>RM: Validate instruction and create regimen version
+    RM->>AO: RegimenVersionActivated(schedule specification)
+    AO->>PX: Publish sync change(schedule refreshed)
+    RM->>PX: AuditAction(regimen_activated)
+    RM-->>App: Active regimen and canonical schedule
+```
+
+## 4. Reminder-to-adherence interaction
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant RM as Medication Regimen
+    participant AO as Adherence and Notifications
+    participant Device as Mobile Device
+    participant App as Flutter App
+    participant PX as Platform Sync
+
+    RM->>AO: RegimenVersionActivated(schedule rule)
+    AO-->>Device: Canonical reminder specification
+    Device->>Device: Schedule local notification
+    Device-->>App: User marks dose taken, skipped, or late
+    App->>AO: RecordDoseLog(client_event_id, planned_dose_id, status)
+    AO->>AO: Deduplicate and append dose log
+    AO->>RM: DoseLogged(event type, regimen version, occurred time)
+    alt Dose is taken
+        RM->>RM: Record inventory movement(consumed)
+    end
+    AO->>AO: Recalculate adherence projection
+    AO->>PX: Publish profile-scoped change events
+```
+
+## 5. Rules that keep subsystems decoupled
+
+| Rule | Why it matters |
+|---|---|
+| The catalog never stores a patient’s dose, stock, reminder time, or adherence percentage. | Catalog data is shared; medication-management data is sensitive and profile-private. |
+| Prescription/ML output never writes directly to a regimen. | A review decision must link evidence to the user-confirmed instruction. |
+| Reminder delivery is not a dose event. | An operating-system notification may be delivered or dismissed without medication consumption. |
+| Team membership is not profile access. | A member needs an explicit permission grant before viewing a patient profile. |
+| Event payloads carry IDs and version/release references, not copied mutable entities. | Receiving subsystems can retrieve the correct data from the owner or preserve an immutable event snapshot. |
+| Synchronous queries are limited to authorization and low-latency reference lookup. | Long-running OCR, index rebuilds, notification processing, and projections run asynchronously. |

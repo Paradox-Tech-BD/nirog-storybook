@@ -1,0 +1,35 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const backendArchitecture = `flowchart TB
+  Client[Flutter + Admin clients] --> API[FastAPI modular monolith]
+  API --> Identity[User Management]
+  API --> Catalog[Medicine Catalog]
+  API --> Evidence[Prescription and ML Evidence]
+  API --> Regimen[Medication Regimen]
+  API --> Adherence[Adherence and Notifications]
+  API --> Platform[Policy, Audit, Sync, Idempotency]
+  API --> DB[(PostgreSQL)]
+  API --> Assets[(Private object storage)]
+  DB --> Outbox[Transactional outbox]
+  Outbox --> Broker[(Broker)]
+  Broker --> Workers[Dedicated worker pools]
+  Workers --> ML[ML processing]
+  Workers --> Notify[Notifications and projections]
+  Workers --> Curate[Catalog import and index]`;
+
+<Meta title="Nirog / 02 Technical Analysis / 01 Architecture and Domains / 17 Technical Architecture Overview" />
+
+# Technical Architecture Overview
+
+The full backend technical analysis is now organized into separate, implementation-oriented documents. Nirog begins as a **modular monolith** with a synchronous FastAPI command/query core, PostgreSQL as authoritative state, restricted object storage for evidence, and separately routed worker pools for asynchronous work.
+
+<MermaidDiagram title="Whole backend recommended runtime shape" chart={backendArchitecture} />
+
+## What changes from pre-analysis
+
+Pre-analysis defined boundaries. Technical analysis turns them into module ownership, schema families, APIs, transaction behavior, outbox events, worker queues, authorization enforcement, release artifacts, and tests. The system remains logically decomposed while avoiding premature microservice operational cost.
+
+## Technical pack
+
+Read the complete [Technical Analysis README](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/README.md), then review the subsystem, ML-safety, asynchronous, platform, operations, and presentation pages in this Storybook sidebar.

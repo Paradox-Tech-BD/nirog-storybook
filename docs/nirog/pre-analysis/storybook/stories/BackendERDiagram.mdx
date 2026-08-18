@@ -1,0 +1,41 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const backendER = `erDiagram
+  ACCOUNT ||--o{ PROFILE_MEMBERSHIP : has
+  PROFILE ||--o{ PROFILE_MEMBERSHIP : grants
+  PROFILE ||--o{ PRESCRIPTION_DOCUMENT : owns
+  PRESCRIPTION_DOCUMENT ||--|{ DOCUMENT_PAGE : contains
+  PRESCRIPTION_DOCUMENT ||--o{ SCAN_JOB : processed_as
+  SCAN_JOB ||--|{ ML_STAGE_RUN : executes
+  SCAN_JOB ||--o{ EXTRACTED_LINE : produces
+  EXTRACTED_LINE ||--o{ MATCH_CANDIDATE : proposes
+  EXTRACTED_LINE ||--o{ REVIEW_DECISION : reviewed_by
+  REVIEW_DECISION ||--o| REGIMEN_ITEM : creates
+  REGIMEN_ITEM ||--|{ REGIMEN_VERSION : versions
+  REGIMEN_ITEM ||--o{ DOSE_EVENT : records
+  CATALOG_RELEASE ||--|{ MEDICINE_PRODUCT : publishes
+  MEDICINE_PRODUCT ||--o{ PRODUCT_ALIAS : has
+  CATALOG_RELEASE ||--o{ MATCH_INDEX_RELEASE : builds
+  PROFILE ||--o{ UNRESOLVED_MEDICATION : privately_stores
+  ACCOUNT ||--o{ AUDIT_EVENT : acts`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 03 Models and Contracts / 11 Backend ER Diagram" />
+
+# Latest Backend ER Diagram
+
+This is the logical database relationship model for the current backend baseline. It deliberately separates three concepts that often become incorrectly merged: the shared catalog product, machine-extracted prescription evidence, and the profile-private regimen that the user has explicitly confirmed.
+
+<MermaidDiagram title="Nirog logical backend ER diagram" chart={backendER} />
+
+## Relationship interpretation
+
+An `ACCOUNT` receives authority through a time-bounded `PROFILE_MEMBERSHIP`; the `PROFILE` is the patient/dependent data boundary. A `PRESCRIPTION_DOCUMENT` can have several immutable pages and several scan attempts. A scan yields extracted evidence and candidate product matches. A `REVIEW_DECISION` may create one profile-private `REGIMEN_ITEM`; it does not mutate the published catalog.
+
+Every regimen has versioned instructions and append-only dose events. Catalog products remain attached to a `CATALOG_RELEASE`, while unresolved medication names remain private to the profile. `AUDIT_EVENT` records the acting account and outcome without becoming a copy of the health-data resource.
+
+## Critical constraints
+
+The database prevents repeated offline writes with a unique device/client-command key. A review decision is unique for its extracted line, evidence version, and idempotency scope. Regimen versions increase monotonically per regimen item. Published catalog and match-index releases are immutable; corrections create a new release. Audit events are insert-only for application principals.
+
+The canonical, Notion-ready ER source is maintained in [`docs/nirog/pre-analysis/schemas/domain-schema.md`](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/pre-analysis/schemas/domain-schema.md).

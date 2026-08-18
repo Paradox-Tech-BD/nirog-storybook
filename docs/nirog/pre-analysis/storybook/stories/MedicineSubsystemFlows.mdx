@@ -1,0 +1,57 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const ocrCatalogMatchFlow = `sequenceDiagram
+  autonumber
+  participant PM as Prescription and ML Evidence
+  participant Normalize as Extraction Normalizer
+  participant Catalog as Medicine Catalog
+  participant Index as Match Index Release
+  participant Review as Review Payload
+  PM->>Normalize: Send extracted medicine evidence
+  Normalize-->>PM: Normalized name, strength, form, route candidates
+  PM->>Catalog: Resolve active catalog release
+  Catalog-->>PM: Catalog release identifier
+  PM->>Index: Search aliases, products, and embeddings
+  Index-->>PM: Ranked product candidate identifiers
+  PM->>Catalog: Fetch release-bound product details
+  Catalog-->>PM: Product identity and verification state
+  PM->>Review: Persist candidates with score evidence
+  Review-->>PM: Review required or ready for review`;
+
+export const catalogPublicationFlow = `sequenceDiagram
+  autonumber
+  participant Curator as Catalog Curator
+  participant Source as Catalog Source
+  participant Catalog as Medicine Catalog
+  participant Index as Match Index Builder
+  participant PM as Prescription and ML Evidence
+  Curator->>Catalog: Import source with checksum and license evidence
+  Catalog->>Catalog: Validate products, ingredients, aliases
+  Catalog->>Catalog: Create draft catalog release
+  Curator->>Catalog: Approve or reject curation cases
+  Catalog->>Index: Build match index for draft release
+  Index-->>Catalog: Index checksum and readiness state
+  Catalog->>Catalog: Publish immutable catalog and index release
+  Catalog-->>PM: CatalogReleasePublished event
+  PM->>PM: Use new release only for future scan jobs`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 04 Subsystem Flows / 14 Medicine Subsystem Flows" />
+
+# Medicine Subsystem Interaction Flows
+
+The Medicine Catalog subsystem owns released reference facts: products, ingredients, manufacturers, forms, aliases, catalog sources, and matching-index releases. It does not own an individual’s regimen or supply count. Prescription and ML Evidence uses the catalog for candidates; Medication Regimen stores only an approved product reference or private unresolved medication.
+
+## OCR evidence to catalog candidates
+
+<MermaidDiagram title="Prescription evidence and catalog matching flow" chart={ocrCatalogMatchFlow} />
+
+## Curate and publish a catalog release
+
+<MermaidDiagram title="Catalog release publication flow" chart={catalogPublicationFlow} />
+
+## Interaction contract
+
+The catalog query accepts normalized evidence, release context, optional strength, dosage form, and route hints. It returns ranked candidates with product identity, verification status, and release provenance. The scan subsystem stores candidate scores as evidence, not as an accepted medicine fact. A user review selects the match before Medication Regimen can create a personal course.
+
+Shared aliases, transliterations, and product changes must pass curation and publication. A newly published catalog release and its match-index release apply to future jobs; historical scan results retain the named release they used.

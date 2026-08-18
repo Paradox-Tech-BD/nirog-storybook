@@ -1,0 +1,48 @@
+---
+title: Nirog Subsystem Schema Ownership
+sidebar:
+  order: 906
+---
+
+# Nirog Subsystem Schema Ownership
+
+This is the table-level ownership map for the grouped Nirog design. It gives backend implementation a practical rule: **a table is written only by its owner module**. An API handler in another module uses the owning service contract, command, query, or event rather than importing the table repository directly.
+
+## Schema ownership map
+
+```mermaid
+erDiagram
+    USERS ||--o{ PATIENT_PROFILES : owns
+    USERS ||--o{ PROFILE_ACCESS : receives
+    PATIENT_PROFILES ||--o{ PROFILE_ACCESS : shares
+    PATIENT_PROFILES ||--o{ PRESCRIPTION_DOCUMENTS : contains
+    PRESCRIPTION_DOCUMENTS ||--o{ OCR_SCANS : creates
+    OCR_SCANS ||--o{ MEDICATION_REVIEWS : produces
+    MEDICATION_REVIEWS ||--o| MEDICATION_REGIMENS : activates
+    MEDICINE_PRODUCTS ||--o{ MEDICATION_REGIMENS : identifies
+    MEDICATION_REGIMENS ||--o{ REGIMEN_VERSIONS : versions
+    REGIMEN_VERSIONS ||--o{ SCHEDULE_RULES : defines
+    REGIMEN_VERSIONS ||--o{ DOSE_LOGS : tracks
+    MEDICATION_REGIMENS ||--o{ REFILL_HISTORY : records
+    MEDICATION_REGIMENS ||--o| REFILL_ALERTS : monitors
+    MEDICINE_PRODUCTS ||--o{ PRODUCT_INGREDIENTS : contains
+    GENERIC_INGREDIENTS ||--o{ PRODUCT_INGREDIENTS : identifies
+```
+
+| Database schema / module | Tables | Allowed foreign-key references | Published integration data |
+|---|---|---|---|
+| `identity` / User Management | `users`, `auth_providers`, `user_preferences`, `devices`, `patient_profiles`, `teams`, `team_members`, `team_invitations`, `profile_access`, `consent_records` | Internal identity references only. Other modules hold `patient_profile_id` but do not write identity tables. | Profile status, effective permissions, device preference snapshot, profile deletion event. |
+| `catalog` / Medicine Catalog | `catalog_sources`, `catalog_releases`, `medicine_products`, `manufacturers`, `generic_ingredients`, `product_ingredients`, `dosage_forms`, `drug_classes`, `indications`, `product_aliases`, `match_index_releases` | Internal catalog references only. Regimens reference an immutable `medicine_product_id`. | Product lookup, catalog release, index release, product retired event. |
+| `prescription` / Prescription and ML Evidence | `media_assets`, `prescription_documents`, `document_pages`, `ocr_scans`, `ml_stage_runs`, `ocr_lines`, `extracted_medication_lines`, `field_candidates`, `medicine_match_candidates`, `medication_reviews` | `patient_profile_id`, catalog product candidate IDs. Never an active regimen ID before review command succeeds. | Scan status, review payload, medication review confirmed/rejected event. |
+| `regimen` / Medication Regimen | `unresolved_medications`, `medication_regimens`, `regimen_versions`, `schedule_rules`, `planned_doses`, `inventory_movements`, `refill_rules` | `patient_profile_id`, product ID or unresolved item ID, review ID as source reference. | Regimen activated/changed/paused/ended, schedule changed, refill rule changed. |
+| `adherence` / Adherence and Notifications | `reminder_deliveries`, `notifications`, `dose_logs`, `refill_alerts`, `refill_history`, `adherence_stats` | Regimen/version/planned-dose IDs as immutable foreign references. | Dose logged, refill recorded, notification lifecycle, adherence projection updated. |
+| `platform` / Cross-cutting | `client_commands`, `change_events`, `audit_events`, `provenance_records`, `purge_jobs`, `outbox_events` | Entity ID plus entity type, never business-table ownership. | Ordered sync stream, audit record, outbox delivery, purge completion. |
+
+## Reference versus private health data
+
+| Concept | Storage owner | Visibility | Example |
+|---|---|---|---|
+| Product name, form, strength, manufacturer, ingredients | Medicine Catalog | Shared reference data governed by catalog release. | `Napa 500 mg tablet` product identity. |
+| User-confirmed dose/timing/start/end state | Medication Regimen | Profile-private health data. | One tablet at 08:00 and 20:00 for a confirmed course. |
+| Source image and OCR text | Prescription/ML Evidence | Profile-private health evidence with retention policy. | Uploaded handwritten prescription page and its text regions. |
+| Reminder delivery and dose record | Adherence/Notifications | Profile-private operational health data. | Local reminder fired at 08:00; user marked the dose taken at 08:08. |

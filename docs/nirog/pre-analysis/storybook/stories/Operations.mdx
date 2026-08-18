@@ -1,0 +1,33 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const governanceFlow = `flowchart LR
+  Model[Model Release] --> Eval[Evaluation Run]
+  Prompt[Prompt Release] --> Eval
+  Catalog[Catalog and Index Release] --> Eval
+  Policy[Policy Release] --> Eval
+  Eval --> Approval[Approved Release]
+  Approval --> Scan[Scan Job Manifest]
+  Scan --> Audit[Audit and Provenance]
+  Audit --> Monitor[Operations Metrics]
+  Monitor --> Rollback[Rollback or Remediation]`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 03 Models and Contracts / 10 Operations and Governance" />
+
+# Operations and Governance
+
+The operational layer makes the ML and reference-data pipeline explainable after deployment. Every meaningful scan result can identify the model, prompt, preprocessing, abbreviation, catalog, index, and policy versions involved. Every user action can be traced to an audit event without writing prescription text, image data, or credentials to default logs.
+
+<MermaidDiagram title="Release governance lifecycle" chart={governanceFlow} />
+
+## Security controls
+
+Protected resources use server-side profile authorization. Prescription images use short-lived signed read/write capabilities. The backend validates type, size, pixel limits, and image safety at upload. It encrypts stored assets, redacts sensitive logs, and tracks a deletion request through a purge job that covers assets, derivatives, caches, and allowed retained audit metadata.
+
+## Operational metrics
+
+The API monitors latency, errors, permission denials, and idempotency replays. The scan pipeline monitors queue depth, stage duration, retry rates, dead letters, and cost per scan. ML quality monitors review-required rate, manual-entry rate, correction rate by field, candidate acceptance rank, and unresolved-catalog rate. Sync monitors pending command age, conflicts, duplicate commands, and change-feed lag.
+
+## Release artifacts
+
+Model releases, prompt releases, preprocessing releases, abbreviation releases, catalog releases, index releases, policy releases, and evaluation runs are separate versioned artifacts. A production change is not complete until its rollout, evaluation, monitoring, and rollback path are documented.

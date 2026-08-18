@@ -1,0 +1,33 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const profileAuthorization = `sequenceDiagram
+  participant C as Client
+  participant A as FastAPI dependency
+  participant O as OIDC verifier
+  participant P as Profile policy service
+  participant D as Scoped repository
+  C->>A: Request + bearer token + profileId
+  A->>O: Verify issuer, audience, signature and subject
+  O-->>A: Local account actor
+  A->>P: authorize(actor, profileId, action)
+  P-->>A: Capability or denial
+  A->>D: Execute only with capability
+  D-->>A: Scoped result
+  A-->>C: Result or safe denial`;
+
+<Meta title="Nirog / 02 Technical Analysis / 01 Architecture and Domains / 18 Technical User Management" />
+
+# Technical User Management
+
+User Management owns account identity, OIDC identity mapping, patient profiles, caregiver grants, consent, preferences, devices, invitations, and profile authorization. It is deliberately separate from all health-content modules.
+
+<MermaidDiagram title="Every profile-scoped action uses an evaluated capability" chart={profileAuthorization} />
+
+## Enforced design decisions
+
+An access token identifies the account but does not directly grant a patient profile. The server evaluates profile ownership or an active caregiver grant for every requested object. `profile_access` is the only durable profile-sharing authority; team membership alone cannot expose patient data.
+
+Mutations require an idempotency key and aggregate version. The module writes the permission change, audit event, outbox event, and sync change in one transaction. PostgreSQL RLS is a second control for sensitive profile tables, not a replacement for route and policy checks.
+
+Read the complete [User Management Technical Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/01-user-management.md).

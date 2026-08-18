@@ -1,0 +1,56 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const systemMap = `flowchart LR
+  subgraph UM[1 User Management]
+    Identity[Users and Auth]
+    Profiles[Patient Profiles and Access]
+    Teams[Teams and Invitations]
+  end
+  subgraph MC[2 Medicine Catalog]
+    Products[Products and Generics]
+    Releases[Catalog and Index Releases]
+  end
+  subgraph PM[3 Prescription and ML Evidence]
+    Documents[Prescription Documents]
+    Scans[OCR Scan Jobs]
+    Reviews[Medication Reviews]
+  end
+  subgraph RM[4 Medication Regimen]
+    Regimens[Regimens and Versions]
+    Schedules[Schedule Rules and Inventory]
+  end
+  subgraph AO[5 Adherence and Notifications]
+    Logs[Dose Logs]
+    Reminders[Reminders and Alerts]
+  end
+  subgraph PX[6 Cross-Cutting Platform]
+    Audit[Audit and Provenance]
+    Sync[Sync and Idempotency]
+  end
+  UM --> PM
+  UM --> RM
+  MC --> PM
+  PM --> RM
+  RM --> AO
+  AO --> RM
+  PX --- UM
+  PX --- PM
+  PX --- RM
+  PX --- AO`;
+
+<Meta title="Nirog / 01 Pre-Analysis / 01 Foundations / 01 System Map" />
+
+# System Map and Boundaries
+
+Nirog is a **modular monolith first**. The six boxes below are internal subsystems, not six mandatory deployments. They use one FastAPI API and PostgreSQL cluster initially, but ownership boundaries are enforced in code so that the ML worker or catalog service can be extracted later without changing the business model.
+
+<MermaidDiagram title="Nirog subsystem map" chart={systemMap} />
+
+## Boundary rule
+
+Each subsystem owns its tables, write rules, and vocabulary. A subsystem may request a low-latency read from another owner, but it does not directly update the other owner’s records. Cross-subsystem changes use a command handled by the owner, followed by an outbox event where an asynchronous consequence is needed.
+
+## The six subsystem roles
+
+**User Management** answers who is acting and which patient profile they can access. **Medicine Catalog** answers what a released product is. **Prescription and ML Evidence** answers what was seen in the source document and what candidates the model produced. **Medication Regimen** answers what the user has confirmed they intend to take. **Adherence and Notifications** answers what reminders were delivered and what the user reported happened. **Cross-Cutting Platform** supplies authorization evaluation, idempotency, audit, provenance, and sync.

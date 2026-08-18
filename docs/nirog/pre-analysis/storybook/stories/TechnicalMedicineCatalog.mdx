@@ -1,0 +1,30 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const catalogLifecycle = `stateDiagram-v2
+  [*] --> importing
+  importing --> draft
+  draft --> validating
+  validating --> pending_review
+  validating --> failed
+  pending_review --> publishing: approved
+  pending_review --> draft: remediate
+  publishing --> published: index ready
+  published --> superseded: successor release
+  failed --> draft: corrected import`;
+
+<Meta title="Nirog / 02 Technical Analysis / 01 Architecture and Domains / 19 Technical Medicine Catalog" />
+
+# Technical Medicine Catalog
+
+The Medicine Catalog is shared, curated reference data. It owns products, ingredients, manufacturers, dosage forms, aliases, source provenance, curation cases, catalog releases, and match-index releases. It never owns patient regimen, stock, reminder, or dose-history data.
+
+<MermaidDiagram title="Catalog release lifecycle" chart={catalogLifecycle} />
+
+## Release-first catalog design
+
+Published releases are immutable. A correction creates a successor release; it never silently edits a published product. Search and ML candidate retrieval always return a catalog release and index release identifier, which keeps historical review results reproducible.
+
+Private unresolved medications remain outside global catalog search. A user correction can open a curation case but cannot publish an alias or generic mapping without evidence, review, release publication, and rollback path.
+
+Read the complete [Medicine Catalog Technical Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/02-medicine-catalog.md).

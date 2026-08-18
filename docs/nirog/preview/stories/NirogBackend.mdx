@@ -1,0 +1,36 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Nirog / Backend Architecture" />
+
+# Nirog Backend Architecture
+
+This is the native Storybook preview for the Nirog backend documentation held in this official Storybook fork. It replaces the earlier custom documentation application.
+
+## Subsystem map
+
+Nirog is organised into six owned backend subsystems: **User Management**, **Medicine Catalog**, **Prescription and ML Evidence**, **Medication Regimen**, **Adherence and Notifications**, and a **Cross-Cutting Platform**. Each owns its own tables and write rules. The modules communicate through profile-scoped commands, released reference-data queries, and outbox events.
+
+| Subsystem | Core responsibility |
+|---|---|
+| User Management | Accounts, authentication, patient profiles, teams, permissions, devices, and consent. |
+| Medicine Catalog | Versioned product, generic, manufacturer, form, alias, and matching-index reference data. |
+| Prescription and ML Evidence | Prescription pages, scan jobs, OCR evidence, candidate matches, and review decisions. |
+| Medication Regimen | User-confirmed courses, versioned instructions, schedules, planned doses, inventory, and refill rules. |
+| Adherence and Notifications | Reminder delivery, dose logs, refill alerts/history, notification state, and adherence projections. |
+| Cross-Cutting Platform | Authorization evaluation, idempotency, change sync, audit, provenance, release governance, and deletion workflows. |
+
+## Canonical source files
+
+The complete, Notion-ready analysis stays in the fork as source-controlled MDX and Markdown. These links open the exact documents represented by this Storybook preview.
+
+- [Backend Blueprint](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/backend-blueprint.mdx)
+- [Subsystem Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/architecture/subsystem-architecture.mdx)
+- [Subsystem Interactions](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/architecture/subsystem-interactions.mdx)
+- [Subsystem Schema Ownership](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/schemas/subsystem-schema-ownership.mdx)
+- [Application Class Model](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/schemas/application-class-model.mdx)
+
+## Primary integration flow
+
+The Flutter client creates a prescription scan under an authorized patient profile. The ML pipeline produces reviewable evidence and catalog candidates. A confirmed review sends a command to the Medication Regimen subsystem, which creates a versioned course and schedule. The Adherence subsystem schedules reminders and records user-reported dose outcomes without treating a reminder delivery as proof of consumption.
+
+> Mermaid ER, class, flow, state, and sequence diagrams are preserved in the canonical source documents for direct copy into Notion Mermaid blocks.

@@ -1,0 +1,23 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const catalogWorkflow = `flowchart LR
+  Source[Accountable source artifact] --> Validate[Validate provenance and structure]
+  Validate --> Curate[Curation case and reviewed diff]
+  Curate --> Draft[Immutable draft release manifest]
+  Draft --> Index[Build and validate release-bound index]
+  Index --> Publish[Governed publication]
+  Publish --> Match[Release-bound search and candidate context]
+  Match --> Review[Evidence review only]`;
+
+<Meta title="Nirog / 04 Design Workflows / 03 Reference and Evidence / 44 Catalog Source, Release, and Match Context" />
+
+# Catalog Source, Release, and Match Context
+
+The catalog workflow makes shared medicine facts accountable and reproducible. It validates source provenance, creates curation cases, publishes immutable successor releases, and builds release-bound search/match indexes. Historic review uses the release/index/policy context recorded at the time, even after a newer catalog release becomes active.
+
+<MermaidDiagram title="Curated catalog source-to-release workflow" chart={catalogWorkflow} />
+
+A search result or ML candidate is reference context only. Strength, form, route, and ingredient compatibility filter candidates before ranking; ambiguous/no-compatible results route to review or manual entry, not forced mapping.
+
+Read [Catalog Source-to-Release](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/02-reference-catalog/01-source-to-release.md) and [Reference Selection and Match Context](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/02-reference-catalog/02-reference-selection-and-match-context.md).

@@ -1,0 +1,28 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const confirmationFlow = `sequenceDiagram
+  participant App as Flutter client
+  participant API as Regimen API
+  participant Policy as Profile capability
+  participant Evidence as Review payload
+  participant DB as Regimen owner
+  participant Outbox as Audit/idempotency/outbox
+  App->>API: Confirm review or submit manual entry
+  API->>Policy: Check current permission and purpose
+  API->>Evidence: Validate review version/expiry if present
+  API->>DB: Validate aggregate base version and commit regimen version
+  DB->>Outbox: Commit audit, idempotency, schedule events
+  API-->>App: Current versioned regimen`;
+
+<Meta title="Nirog / 04 Design Workflows / 04 Regimen and Mobile / 46 Confirmation to Versioned Regimen" />
+
+# Confirmation to Versioned Regimen
+
+The Regimen module is the only owner that turns an explicit confirmation or manual entry into a medication plan. It validates current profile authority, review payload state/expiry when used, catalog/reference compatibility, aggregate concurrency, and idempotency before it writes a new versioned regimen.
+
+<MermaidDiagram title="Evidence-assisted confirmation becomes a separate regimen command" chart={confirmationFlow} />
+
+Later edits, pauses, resumes, and stops create controlled successor/current states rather than mutating history. Schedule and notification work begins only from committed `regimen.changed`/`schedule.changed` events; projectors cannot rewrite the canonical regimen.
+
+Read [Review Confirmation to Regimen](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/04-regimen-and-adherence/01-confirmation-to-regimen.md).

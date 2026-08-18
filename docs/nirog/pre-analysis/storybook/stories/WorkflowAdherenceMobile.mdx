@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const mobileDoseFlow = `sequenceDiagram
+  participant App as Flutter local store
+  participant API as Sync and dose API
+  participant DB as Canonical adherence state
+  participant Worker as Projection/notification worker
+  App->>App: Queue offline intent with client event ID
+  App->>API: Submit intent with base version
+  API->>DB: Validate current profile/action and append dose event once
+  DB-->>App: Result or conflict/current representation
+  DB->>Worker: Committed change event
+  Worker->>DB: Rebuild summary/eligible reminder intent
+  App->>API: Pull authorized deltas with scoped cursor`;
+
+<Meta title="Nirog / 04 Design Workflows / 04 Regimen and Mobile / 47 Dose, Refill, Offline Sync, and Reminder Delivery" />
+
+# Dose, Refill, Offline Sync, and Reminder Delivery
+
+Schedule policy, planned occurrence, notification delivery, user dose event, inventory adjustment, and adherence summary are separate artifacts. A notification delivery/open does not prove a dose; a user’s taken/skipped/correction command is the canonical adherence event. Flutter retains protected local intent and a scoped view while the server resolves authorization, idempotency, conflict, and current state.
+
+<MermaidDiagram title="Offline intent, canonical dose event, and derived mobile updates" chart={mobileDoseFlow} />
+
+Future schedule occurrences and summaries are rebuildable. Refill/inventory uses a controlled event ledger; notification providers use deterministic intents and reconciliation before resend. Time zone/DST, stopped regimen, revoked device, duplicate offline submission, and provider uncertainty are all explicit workflow branches.
+
+Read [Schedule, Dose, and Refill](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/04-regimen-and-adherence/02-schedule-dose-and-refill.md), [Offline Intent and Sync](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/05-mobile-and-notification/01-offline-intent-and-sync.md), and [Reminder Delivery and Device State](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/05-mobile-and-notification/02-reminder-delivery-and-device-state.md).

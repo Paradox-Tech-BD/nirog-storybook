@@ -1,0 +1,22 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const contractFlow = `flowchart LR
+  Trigger[Command/event/schedule] --> Gate[Current auth, scope, policy, version]
+  Gate --> Commit[Owned state + audit + idempotency + outbox]
+  Commit --> Response[Committed response]
+  Commit --> Worker[Deferred scoped worker]
+  Worker --> Recheck[Re-read current state]
+  Recheck --> Outcome[Effect, safe no-op, retry, or recovery]`;
+
+<Meta title="Nirog / 04 Design Workflows / 01 Foundations / 42 Workflow Contract and State Vocabulary" />
+
+# Workflow Contract and State Vocabulary
+
+Nirog distinguishes **definitions** (versioned policy/configuration), **requests** (governed intent), **canonical actions/events** (durable business facts), **evidence** (observations), and **derived effects** (rebuildable/deferred results). The distinction prevents “request accepted,” “provider notified,” “review ready,” and “medication active” from being treated as the same status.
+
+<MermaidDiagram title="Universal Nirog workflow shape" chart={contractFlow} />
+
+Every workflow must handle accepted, duplicate, stale, denied, cancelled, superseded, retrying, terminal failure, and recovery states. The safety-critical rule is that worker messages carry minimal references; workers re-read source, policy, version, cancellation, and retention state before effect commit.
+
+Read [Workflow Contract and State Vocabulary](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/00-foundations/01-workflow-contract-and-state-vocabulary.md).

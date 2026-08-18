@@ -1,0 +1,38 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const mlIntegrationBoundary = `flowchart LR
+  A[Profile-scoped prescription document] --> B[Restricted source asset]
+  B --> C[Preprocess with lineage]
+  C --> D[Recognition and structured evidence]
+  D --> E[Release-bound catalog retrieval]
+  E --> F[Calibrated review treatment]
+  F --> G{Authorized user decision}
+  G -->|Confirm| H[Versioned private regimen]
+  G -->|Edit or reject| I[Corrected or unresolved private record]
+  F -->|Insufficient evidence| J[Manual entry recommendation]
+  H --> K[Schedule, notification and adherence]
+  I --> L[Curated feedback pathway]
+  L -. Never direct shared publication .-> E`;
+
+<Meta title="Nirog / 16 ML Integration Pre-Analysis" />
+
+# ML Integration Pre-Analysis
+
+Two supplied Notion design pages now inform the Nirog general pre-analysis: the product page and its detailed AI/ML pipeline proposal. Together, they support handwriting recognition, organized text, medicine-catalog retrieval, confidence-aware suggestions, feedback, and asynchronous progress—but they do not replace Nirog’s evidence-preserving and user-confirmed medication boundary.
+
+<MermaidDiagram title="ML integration product boundary" chart={mlIntegrationBoundary} />
+
+## What this pre-analysis accepts
+
+The product may take a photo or gallery image, hash it for deduplication, preserve it as restricted source evidence, produce traceable derived preprocessing artifacts, run recognition and extraction, retrieve catalog candidates, and use calibrated signals to route the result to a review screen. It can use private feedback and carefully curated shared catalog changes to improve retrieval over time.
+
+## What it does not allow
+
+An OCR result, semantic retrieval hit, high-confidence candidate, or automated “match” does not create an active medication plan. Only an authorised review decision can create or update a versioned profile-private regimen. User-created names remain private until a separate curation and publication flow makes a shared catalog change.
+
+## What remains deferred
+
+This is still pre-analysis. Model provider, fallback composition, worker queue, vector store, embeddings, exact thresholds, storage service, real-time transport, and evaluation release gates will be selected only during technical analysis after product-owner authorization.
+
+Read the full [Notion-derived ML Integration Guide](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/pre-analysis/ml-integration/notion-ml-integration-guide.md) for the complete reconciliation.

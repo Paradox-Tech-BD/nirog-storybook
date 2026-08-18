@@ -1,0 +1,66 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const requestPath = `sequenceDiagram
+  participant Flutter as Flutter client
+  participant API as Nirog Core / Fastify
+  participant Clerk as Clerk verifier
+  participant DB as PostgreSQL / RLS
+
+  Flutter->>API: Bearer session JWT + request
+  API->>Clerk: verifyToken() with configured constraints
+  alt verified principal
+    Clerk-->>API: Typed principal
+    API->>DB: ensure_clerk_account()
+    API->>DB: SET LOCAL account/profile/purpose
+    API->>DB: Owner or persisted-grant check
+    DB-->>API: Typed command result
+    API-->>Flutter: Safe API response
+  else invalid or unconfigured verifier
+    Clerk-->>API: Authentication failure
+    API-->>Flutter: Generic 401
+  end`;
+
+export const authorizationPath = `flowchart TD
+  Principal[Verified Clerk principal] --> Account[Local account projection]
+  Account --> Scope[Scoped DB transaction]
+  Scope --> Owner{Profile owner?}
+  Owner -- yes --> Allow[Implicit owner capability]
+  Owner -- no --> Grant{Live grant snapshot?}
+  Grant -- no --> Deny[No patient-data capability]
+  Grant -- yes --> Permission{Stored permission?}
+  Permission -- yes --> Allow
+  Permission -- no --> Deny
+  Team[Team membership] -. no implicit access .-> Deny`;
+
+<Meta title="Nirog / 08 Implementation Inception / 06 Clerk User Subsystem / 86 Verified API and Authorization Slice" />
+
+# Clerk User Subsystem: Verified API and Authorization Slice
+
+Nirog Core now has a **verified first implementation slice** for Clerk-authenticated users. Clerk proves the external principal; Core performs local account mapping, profile scope, permission evaluation, RLS context, idempotency, audit/outbox work, and the generated API contract. The verifier is a root Fastify pre-handler, which avoids plugin encapsulation excluding user routes.
+
+<MermaidDiagram title="Authenticated request path" chart={requestPath} />
+
+## What is now delivered
+
+The modular workspace includes `@nirog/auth`, `@nirog/user-domain`, expanded `@nirog/access`, and Drizzle-backed user repositories. Migration `0001_clerk_user_subsystem.sql` adds the identity, profile-access, team, invitation, consent, device, and provider-event records, RLS policies, and the restricted `ensure_clerk_account()` JIT projection function.
+
+The API exposes Clerk-protected current-account, preferences, patient-profile, profile-grant, and team-creation endpoints. Every mutation is idempotency-key protected. Generated OpenAPI declares `/api/v1` as the server URL, and uses server-relative paths such as `/me`; Scalar is served at `/reference`.
+
+<MermaidDiagram title="Persisted profile-grant authorization" chart={authorizationPath} />
+
+## Access invariant
+
+Profile ownership is implicit. Delegated access derives only from an active, persisted permission snapshot. Role templates are expanded when a grant is created, and authorization evaluates the stored snapshot rather than a mutable role label. The `PolicyEvaluator` interface retains the required future PBAC extension seam.
+
+Team collaboration remains deliberately non-clinical: team membership **never** grants access to patient data.
+
+## Verification
+
+The repository’s `pnpm verify` and OpenAPI writer pass with **9 tests across 4 test files**. The test matrix confirms anonymous rejection, dependency-injected verified principal flow, idempotency enforcement, generated bearer security metadata, fail-closed Clerk configuration, persisted permission decisions, and revoked-grant denial.
+
+## Deliberately pending endpoints
+
+The remaining user-subsystem boundary includes team invitation lifecycle routes, signed Clerk/Svix webhook ingestion, device registration, consent-management routes, and PostgreSQL integration tests for RLS, security-definer privileges, and transactional audit/outbox behavior. These remain visible as explicit next work rather than being represented as delivered capability.
+
+Read the full [verified implementation record](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/08-clerk-user-subsystem-implementation.md) and the [approved Clerk user-subsystem design](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/07-clerk-user-subsystem-design.md).

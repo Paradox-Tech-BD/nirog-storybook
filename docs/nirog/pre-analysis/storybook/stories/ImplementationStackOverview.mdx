@@ -1,0 +1,39 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const stackMap = `flowchart TB
+  Flutter[Flutter mobile app] --> Edge[TLS edge and WAF]
+  Edge --> API[FastAPI API]
+  API --> Access[OIDC and profile policy]
+  API --> PG[(PostgreSQL 18)]
+  API --> S3[Private S3 and KMS]
+  PG --> Outbox[Transactional outbox]
+  Outbox --> Valkey[(Managed Valkey)]
+  Valkey --> Workers[Celery worker pools]
+  Workers --> PG
+  Workers --> S3
+  API --> Obs[OpenTelemetry and redacted telemetry]
+  Workers --> Obs
+  CI[GitHub Actions and OpenTofu] --> ECS[ECS Fargate services]
+  ECS --> API
+  ECS --> Workers`;
+
+<Meta title="Nirog / 07 Implementation Stack / 01 Baseline / 71 Implementation Stack Overview" />
+
+# Implementation Stack Overview
+
+Nirog’s implementation baseline is a **Python 3.13 modular monolith** with FastAPI, Pydantic v2, SQLAlchemy 2, PostgreSQL 18, Celery 5.6, managed Valkey, private S3/KMS evidence storage, OIDC, OpenTelemetry, Docker, OpenTofu, GitHub Actions, and an ECS Fargate production profile. The selected technologies implement the existing ownership and safety architecture; they do not weaken it.
+
+<MermaidDiagram title="Nirog selected implementation stack" chart={stackMap} />
+
+## Technology posture
+
+**Authoritative state.** PostgreSQL owns application state, access grants, evidence lineage, audit, outbox, and consumer control records. Valkey provides broker and bounded cache capabilities only.
+
+**Separate runtime pressure.** API, outbox relay, ML, catalog, projection, notification, and maintenance workers deploy and scale independently while sharing published module contracts and one authoritative database.
+
+**Evidence boundary.** Private S3/KMS storage and worker identity keep source documents and OCR artifacts restricted. ML creates reviewable evidence only; an authorized, idempotent server command creates regimen state.
+
+**Executable contracts.** FastAPI exports OpenAPI; Redocly lints the published contract; Flutter receives a generated client from the validated artifact. Storybook remains the human architecture library.
+
+Read the full [Stack Decision and Boundaries](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-stack/00-stack-decision-and-boundaries.md).

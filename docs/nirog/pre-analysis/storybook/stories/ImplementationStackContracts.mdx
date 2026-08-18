@@ -1,0 +1,37 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const contractMap = `sequenceDiagram
+  participant Flutter as Flutter
+  participant API as FastAPI
+  participant OIDC as OIDC verifier
+  participant Access as Profile policy service
+  participant Module as Nirog module
+  participant ML as OCR worker
+
+  Flutter->>API: Typed request, idempotency key, expected version
+  API->>OIDC: Validate token and resolve actor
+  API->>Access: Evaluate permission, relation, consent, purpose
+  Access-->>API: Short-lived profile capability or safe denial
+  API->>Module: Typed command
+  Module-->>Flutter: Safe receipt, representation, or problem
+  Module->>ML: Outbox reference after commit
+  ML-->>Module: Reviewable evidence only`;
+
+<Meta title="Nirog / 07 Implementation Stack / 03 Trust, ML, and Client Contracts / 73 Access, ML, Flutter, and Contract Stack" />
+
+# Access, ML, Flutter, and Contract Stack
+
+The stack separates **authentication**, **profile authorization**, **evidence processing**, and **mobile synchronization**. A generic OIDC adapter verifies identity, while Nirog retains profile grants, consent, persisted permission snapshots, resource relationships, and audit in PostgreSQL. RBAC is active now; a typed policy-evaluator interface enables future PBAC without replacing grants.
+
+<MermaidDiagram title="Nirog authenticated request and evidence boundary" chart={contractMap} />
+
+## Integration rules
+
+**Access.** The OIDC verifier emits a minimal immutable actor. The Profile Policy Service evaluates the live profile relationship, persisted permission set, relation fact, and consent/purpose before creating a request-local capability.
+
+**OCR and ML.** PaddleOCR plus ONNX Runtime is the self-hosted worker baseline behind `PrescriptionOcrPort`. Managed providers remain optional adapters and must meet release, evaluation, residency, redaction, timeout, purge, and deterministic-key controls before use.
+
+**Flutter.** OpenAPI 3.1 is exported from FastAPI, linted with Redocly, and used to generate a Dart/Dio client. Flutter persists intents locally, provides idempotency and expected version, and renders server-authoritative change feeds. It never decides clinical state or authorization.
+
+Read the complete [Access, ML, Flutter, and Contract Stack decision](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-stack/02-access-ml-flutter-and-contract-stack.md).

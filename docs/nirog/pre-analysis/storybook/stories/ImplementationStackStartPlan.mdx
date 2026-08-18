@@ -1,0 +1,33 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const startMap = `flowchart LR
+  F[Foundation] --> I[Identity and access]
+  I --> E[Catalog and evidence]
+  E --> R[Regimen and adherence]
+  R --> M[Mobile and notifications]
+  M --> Q[ML and operations maturity]
+  F -. proves .-> Safe[Security and transaction safety]
+  I -. proves .-> Safe
+  E -. proves .-> Safe
+  R -. proves .-> Safe
+  M -. proves .-> Safe
+  Q -. proves .-> Safe`;
+
+<Meta title="Nirog / 07 Implementation Stack / 05 Start Plan / 75 Implementation Start Plan" />
+
+# Implementation Start Plan
+
+Implementation begins by proving safety infrastructure before high-variance workflow automation. The first repository includes `pyproject.toml`, `uv.lock`, Docker and Compose files, OpenTofu infrastructure, GitHub Actions, OpenAPI governance, and the Nirog modular source layout. Empty future-module scaffolds are not required.
+
+<MermaidDiagram title="Nirog implementation milestones" chart={startMap} />
+
+## First safe milestone
+
+The first working increment delivers settings, dependency injection, typed IDs and safe errors, migration harness, database roles and RLS fixture, OIDC actor mapping, profile capability, audit/idempotency/outbox primitives, correlation logging, OpenAPI export/lint, container build, and CI policy. It must prove BOLA resistance, RLS reset, audit redaction, transaction/outbox atomicity, and safe errors before additional domain endpoints are added.
+
+## Ordered expansion
+
+Build identity and catalog next, then the restricted evidence boundary, user-confirmed regimen and adherence commands, mobile/notification synchronization, and finally ML quality plus operational maturity. Each milestone contains its own required test evidence, release safety, and rollback/recovery criteria.
+
+Read the full [Implementation Start Plan](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-stack/04-implementation-start-plan.md).

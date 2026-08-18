@@ -1,0 +1,30 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const deliveryMap = `flowchart LR
+  Code[Typed Python code] --> Checks[Ruff and Pyright]
+  Checks --> Tests[pytest, Testcontainers, and Schemathesis]
+  Tests --> Contract[OpenAPI export and Redocly lint]
+  Contract --> Scan[Semgrep, Gitleaks, pip-audit, Trivy]
+  Scan --> Image[Signed Docker image]
+  Image --> Plan[OpenTofu plan]
+  Plan --> Deploy[Staged ECS deployment]
+  Deploy --> Observe[OpenTelemetry, metrics, logs, alerts]`;
+
+<Meta title="Nirog / 07 Implementation Stack / 04 Quality, Delivery, and Documentation / 74 Quality, Delivery, Operations, and Documentation" />
+
+# Quality, Delivery, Operations, and Documentation
+
+Nirog’s operational baseline combines local Docker Compose profiles, strict code and contract checks, real-service integration testing, scanned container delivery, infrastructure as code, and redacted telemetry. A release is not ready because an endpoint runs; it must prove authorization, data, asynchronous, contract, and recovery safeguards.
+
+<MermaidDiagram title="Nirog quality and delivery pipeline" chart={deliveryMap} />
+
+## Required controls
+
+**Quality gates.** Ruff, Pyright strict, pytest, Hypothesis, Testcontainers, Schemathesis, Redocly, Semgrep, Gitleaks, pip-audit, and Trivy jointly protect code shape, types, database/RLS behavior, API contract, secrets, dependencies, and images.
+
+**Delivery profile.** GitHub Actions produces scanned Docker images and OpenTofu plans. ECS Fargate hosts independently scaled API, relay, and worker classes; RDS, managed Valkey, S3/KMS, Secrets Manager, WAF, and IAM workload roles form the production baseline.
+
+**Documentation.** Storybook MDX and Mermaid remain the human-reviewed architecture source. FastAPI OpenAPI is the executable interface source. Redocly validates the contract and generates reference material; ADRs record consequential implementation decisions.
+
+Read the full [Quality, Delivery, Operations, and Documentation decision](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-stack/03-quality-delivery-operations-and-documentation.md).

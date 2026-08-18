@@ -1,0 +1,32 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const runtimeMap = `flowchart LR
+  Route[FastAPI route] --> Command[Typed application command]
+  Command --> Policy[Profile capability]
+  Command --> Uow[SQLAlchemy unit of work]
+  Uow --> PG[(PostgreSQL and RLS)]
+  Uow --> Audit[Audit, idempotency, outbox]
+  Audit --> Relay[Outbox relay]
+  Relay --> Queue[(Valkey transport)]
+  Queue --> Worker[Celery queue-specific worker]
+  Worker --> Service[Permitted application service]
+  Service --> PG`;
+
+<Meta title="Nirog / 07 Implementation Stack / 02 Backend and Runtime / 72 Backend, Data, and Async Runtime" />
+
+# Backend, Data, and Async Runtime
+
+The backend uses **FastAPI with strict Pydantic v2 request and response models**, immutable application commands, domain values, and explicit repository/port interfaces. SQLAlchemy 2 with `asyncpg` implements persistence without exposing ORM entities outside infrastructure adapters. Alembic is the only production schema-change tool.
+
+<MermaidDiagram title="Nirog command, transaction, and worker runtime" chart={runtimeMap} />
+
+## Runtime rules
+
+**Typed command boundary.** Routes parse untrusted payloads, resolve an immutable actor and profile capability, and call one application command. The handler controls validation, transaction, domain state transition, audit, idempotency, outbox, and response receipt.
+
+**PostgreSQL authority.** Use one PostgreSQL 18 cluster with module schemas, database roles, constraints, transaction-local profile scope, and RLS as defense in depth. API and worker runtime roles must not own tables or have `BYPASSRLS`.
+
+**Queue-specific execution.** Celery 5.6 uses distinct ML, catalog, projection, notification, and maintenance queues. Tasks carry references and fingerprints only, re-check lifecycle state before work, apply idempotently, and observe timeouts, backoff, dead-letter, and reconciliation policy.
+
+Read the complete [Backend, Data, and Async Runtime decision](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-stack/01-backend-data-and-async-runtime.md).

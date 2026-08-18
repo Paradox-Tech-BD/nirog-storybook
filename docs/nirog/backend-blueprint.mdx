@@ -77,24 +77,20 @@ flowchart LR
 
 FastAPI’s own guidance differentiates small post-response work from heavy multi-process computation; the latter is better handled with a task queue such as Celery. Celery workers consume discrete tasks through a broker and can scale across processes or machines.[3] [4]
 
-## 4. Backend domain modules
+## 4. Grouped backend subsystems
 
-The FastAPI application should use domain modules rather than feature files that directly access each other’s tables. Each module exposes services or repository interfaces. This gives a clean path to extracting a service later, while keeping the MVP simple.
+The backend is organised first by **subsystem ownership** and then by internal modules. This is more useful than one long list of tables because it makes the relationship between User Management, Medicine Catalog, OCR/ML work, patient regimens, and adherence operations explicit. Every table has one owning subsystem; another subsystem reaches it through a command, query contract, or domain event rather than direct repository access.
 
-| Module | Owns | Main responsibilities |
-|---|---|---|
-| `identity` | Accounts, tokens, devices, sessions. | Login, refresh token rotation, device registration, account lifecycle. |
-| `profiles` | Patient profiles, profile access, consent records. | Household/dependent profiles, caregiver sharing, permissions, revocation. |
-| `documents` | Prescription documents, pages, assets. | Upload validation, storage capability issuance, retention and deletion state. |
-| `scan_orchestration` | Scan jobs, stage runs, progress events. | Queueing, retries, idempotency, result materialization, error state. |
-| `ml_evidence` | OCR lines, structured fields, candidate matches, evidence references. | Persist and serve machine-generated evidence for user review. |
-| `medicine_catalog` | Products, manufacturers, ingredients, aliases, catalog releases, index releases. | Search, product resolution, source provenance, active/inactive facts. |
-| `regimens` | Regimen items, versions, schedules, planned doses. | Create/modify a confirmed medication course and generate a device schedule specification. |
-| `adherence` | Dose events, notification events, adherence projections. | Record taken/skipped/snoozed actions and calculate app-recorded adherence. |
-| `inventory` | Supply movements, refill rules, refill alerts. | Advisory remaining-supply estimate and refill prompt workflow. |
-| `sync` | Device commands and profile-scoped change feed. | Exactly-once command ingestion, conflict response, ordered delta synchronization. |
-| `curation` | Curation cases, source approval, alias review. | Controlled publication of shared catalog updates and release rollback. |
-| `governance` | Audit, provenance, model/prompt/policy releases, evaluation runs. | Explainability, release approval, data lifecycle, operations metrics. |
+| Subsystem | Internal modules | Owns | Primary responsibility |
+|---|---|---|---|
+| **User Management** | `identity`, `profiles`, `teams`, `preferences` | Accounts, authentication providers, patient profiles, profile access, teams, invitations, devices, consent. | Resolve who the actor is and which patient profile data they may access. |
+| **Medicine Catalog** | `medicine_catalog`, `curation`, `indexing` | Products, generics, ingredients, manufacturers, dosage forms, aliases, sources, releases, search index. | Supply released reference product identity and controlled medicine matching. |
+| **Prescription and ML Evidence** | `documents`, `scan_orchestration`, `ml_evidence` | Prescription documents/pages, scan jobs, ML stages, OCR lines, field candidates, match candidates, review decisions. | Turn a source document into reviewable evidence without silently changing a regimen. |
+| **Medication Regimen** | `regimens`, `inventory`, `scheduling` | Profile-private medication courses, versioned instructions, schedule rules, planned doses, inventory movements, refill rules. | Maintain the user-confirmed medication routine and its supply model. |
+| **Adherence and Notifications** | `adherence`, `notifications`, `refill_alerts` | Dose logs, notification lifecycle, reminder delivery, adherence projections, refill alerts and refill history. | Deliver reminder specifications and record what the user reports happened. |
+| **Cross-Cutting Platform** | `sync`, `governance`, `audit`, `provenance` | Idempotent client commands, change feed, audit events, policy/model releases, evaluation runs, purge jobs. | Enforce consistency, authorization context, observability, and lifecycle controls around all subsystems. |
+
+> **Canonical grouping:** the detailed diagrams, schema ownership matrix, commands, and events are maintained in [Subsystem Architecture](./architecture/subsystem-architecture.mdx), [Subsystem Interactions](./architecture/subsystem-interactions.mdx), and [Subsystem Schema Ownership](./schemas/subsystem-schema-ownership.mdx). These pages are intentionally Notion-ready and can be copied with their Mermaid diagrams intact.
 
 ## 5. Primary user and backend workflows
 

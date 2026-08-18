@@ -6,7 +6,7 @@ sidebar:
 
 # Nirog Application Class Model
 
-This is the merged application model based on the original Nirog class diagram. It retains the important user-facing concepts—`User`, `UserPreferences`, `UserProfile`, `OCRScan`, `Reminder`, `DoseLog`, `RefillAlert`, `RefillHistory`, `Notification`, and `AdherenceStats`—while using the backend model needed for a real prescription-intelligence workflow.
+This is the merged application model based on the original Nirog class diagram. It retains the important user-facing concepts—`User`, `UserPreferences`, `PatientProfile`, `OCRScan`, `Reminder`, `DoseLog`, `RefillAlert`, `RefillHistory`, `Notification`, and `AdherenceStats`—while using the backend model needed for a real prescription-intelligence workflow.
 
 The key refinement is the split between a shared **`MedicineProduct`** and a profile-specific **`MedicationRegimen`**. A medicine product is a catalog identity, such as brand, generic, form, strength, and manufacturer. A medication regimen is a user-confirmed course for one profile, including timing, start/end dates, reminders, dose logs, and refill state. The split lets one catalog product be used by many profiles without mixing shared reference facts and private health data.
 
@@ -46,7 +46,7 @@ classDiagram
         +update()
     }
 
-    class UserProfile {
+    class PatientProfile {
         +UUID id
         +UUID ownerUserId
         +String name
@@ -230,15 +230,15 @@ classDiagram
     }
 
     User "1" --> "1" UserPreferences : has
-    User "1" --> "1..*" UserProfile : owns
+    User "1" --> "1..*" PatientProfile : owns
     User "1" --> "0..*" ProfileAccess : receives
-    UserProfile "1" --> "0..*" ProfileAccess : shares
-    UserProfile "1" --> "0..*" PrescriptionDocument : contains
+    PatientProfile "1" --> "0..*" ProfileAccess : shares
+    PatientProfile "1" --> "0..*" PrescriptionDocument : contains
     PrescriptionDocument "1" --> "0..*" OCRScan : processes
     OCRScan "1" --> "0..*" MedicationReview : produces review options
-    UserProfile "1" --> "0..*" MedicationReview : confirms
+    PatientProfile "1" --> "0..*" MedicationReview : confirms
     MedicationReview "0..1" --> "1" MedicationRegimen : creates
-    UserProfile "1" --> "0..*" MedicationRegimen : manages
+    PatientProfile "1" --> "0..*" MedicationRegimen : manages
     MedicineProduct "1" --> "0..*" MedicationRegimen : identifies
     MedicationRegimen "1" --> "1..*" RegimenVersion : versions
     RegimenVersion "1" --> "0..*" Reminder : schedules
@@ -248,7 +248,7 @@ classDiagram
     Reminder "1" --> "0..*" Notification : triggers
     RefillAlert "1" --> "0..*" Notification : triggers
     DoseLog "1" --> "0..*" Notification : triggers
-    UserProfile "1" --> "0..*" AdherenceStats : generates
+    PatientProfile "1" --> "0..*" AdherenceStats : generates
 ```
 
 ## Supporting ML and catalog class diagram
@@ -355,7 +355,7 @@ classDiagram
 |---|---|---|
 | `User` | `User` | Retained as the account/authentication owner. |
 | `UserPreferences` | `UserPreferences` | Retained as account-level UI and notification preferences. |
-| `UserProfile` | `UserProfile` + `ProfileAccess` | Retained for personal/dependent medication contexts; profile sharing is added explicitly. |
+| `UserProfile` | `PatientProfile` + `ProfileAccess` | Renamed to clarify that this is the personal/dependent medication context; profile sharing is added explicitly. |
 | `Medicine` | `MedicineProduct` + `MedicationRegimen` + `RegimenVersion` | Separates shared catalog facts from the user’s private medication course and instruction history. |
 | `OCRScan` | `PrescriptionDocument` + `OCRScan` + `MedicationReview` | Separates original source, ML processing run, and user confirmation. |
 | `Reminder` | `Reminder` | Retained as a versioned regimen schedule rule. |

@@ -1,0 +1,25 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const ownershipMap = `flowchart LR
+  Identity[identity\nprofiles, grants, consent] --> Evidence[prescription\nevidence and review]
+  Catalog[catalog\nimmutable releases] --> Evidence
+  Evidence -->|review.confirmed only| Regimen[regimen\nconfirmed plan]
+  Regimen --> Adherence[adherence\ndoses and notifications]
+  Platform[platform\naudit, outbox, sync, retention] -. control plane .-> Identity
+  Platform -. control plane .-> Catalog
+  Platform -. control plane .-> Evidence
+  Platform -. control plane .-> Regimen
+  Platform -. control plane .-> Adherence`;
+
+<Meta title="Nirog / 03 Data Management / 01 Foundations / 33 Charter and Domain Ownership" />
+
+# Charter and Domain Ownership
+
+The data-management charter requires a declared purpose, accountable owner, classification, authoritative location, lifecycle, and recovery behavior for every persistent data product. Logical PostgreSQL schemas enforce the ownership model: a module owns writes to its business tables, while other modules use commands, versioned events, or authorized read models.
+
+<MermaidDiagram title="Module ownership and permitted data dependencies" chart={ownershipMap} />
+
+The Platform module owns cross-cutting controls, not medication decisions. Its retention worker calls an owning module’s purge service; its outbox records committed effects; its audit records redacted decision evidence. It does not bypass domain ownership with arbitrary SQL.
+
+Read [Charter and Principles](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/00-charter-and-principles.md) and [Data Domains and Ownership](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/01-data-domains-and-ownership.md).

@@ -1,0 +1,29 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const evidenceWorkflow = `stateDiagram-v2
+  [*] --> upload_granted
+  upload_granted --> document_ready: checksum and policy verified
+  document_ready --> scan_queued
+  scan_queued --> processing
+  processing --> ready_for_review
+  processing --> review_required
+  processing --> manual_entry_recommended
+  processing --> failed_safe
+  ready_for_review --> confirmed_reference: user confirmation command
+  review_required --> confirmed_reference: edited confirmation command
+  confirmed_reference --> retained
+  document_ready --> cancelled
+  retained --> purge_pending`;
+
+<Meta title="Nirog / 04 Design Workflows / 03 Reference and Evidence / 45 Restricted Upload, ML Evidence, and Review" />
+
+# Restricted Upload, ML Evidence, and Review
+
+Prescription ingest creates a narrow upload grant, verifies checksum/object policy, records an immutable asset manifest, and commits a scan request. Workers then run pre-processing, recognition, structured extraction, release-bound matching, and review-policy evaluation with stage manifests and source lineage.
+
+<MermaidDiagram title="Evidence lifecycle from upload to user review" chart={evidenceWorkflow} />
+
+The complete workflow intentionally has no automatic regimen-activation state. ML/model/provider output is evidence. The only path beyond a review payload is a new, authorized Regimen command made by the user or permitted delegate.
+
+Read [Upload and Ingest](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/03-prescription-evidence/01-upload-and-ingest.md) and [Stage Processing and Review](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/03-prescription-evidence/02-stage-processing-and-review.md).

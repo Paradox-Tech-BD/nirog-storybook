@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const evidenceFlow = `flowchart LR
+  Upload[Restricted upload] --> Document[Document and asset manifest]
+  Document --> Scan[Scan job]
+  Scan --> Stages[Versioned ML stage runs]
+  Stages --> Match[Release-bound candidates]
+  Match --> Policy[Versioned review policy]
+  Policy --> Payload[Immutable review payload]
+  Policy --> Manual[Manual entry route]
+  Payload --> Decision{Authorized decision}
+  Decision -->|confirm/edit| Regimen[Regimen command]
+  Decision -->|reject/unresolved| Private[Private record]
+  Regimen --> Outbox[Derived effects after commit]`;
+
+<Meta title="Nirog / 05 System Architecture / 03 Interfaces, Evidence, and Async / 57 Prescription Evidence and ML Architecture" />
+
+# Prescription Evidence and ML Architecture
+
+The ML pipeline transforms a restricted document into reviewable evidence. Every stage is tied to a manifest/fingerprint and configuration releases. It can preselect a candidate or route to manual entry, but it cannot create a medication plan. The evidence-assisted review command invokes the Regimen module only after current authority, evidence version, catalog release, policy, edited fields, and idempotency validate.
+
+<MermaidDiagram title="Evidence-first ML and explicit medication-action boundary" chart={evidenceFlow} />
+
+Raw OCR/crops/provider outputs remain restricted assets. Queue and telemetry payloads use identifiers, checksums, error class, duration, and release references. A material model, prompt, parser, catalog/index, or policy change creates new lineage and evaluation/rollout evidence.
+
+Read [Prescription Evidence and ML Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/06-prescription-evidence-and-ml-architecture.md).

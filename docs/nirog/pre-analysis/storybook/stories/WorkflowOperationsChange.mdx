@@ -1,0 +1,26 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const changeRecovery = `flowchart LR
+  Specify[Specify risk and compatibility] --> Expand[Additive schema/config]
+  Expand --> Deploy[Compatible API/workers]
+  Deploy --> Backfill[Bounded idempotent backfill]
+  Backfill --> Activate[Validate then controlled activation]
+  Activate --> Observe[Observe safety/SLO signals]
+  Observe --> Contract[Contract old path]
+  Observe --> Incident[Contain and investigate guardrail breach]
+  Incident --> Reconcile[Restore/rebuild/reconcile current state]
+  Reconcile --> Observe`;
+
+<Meta title="Nirog / 04 Design Workflows / 05 Async, Privacy, and Operations / 50 Release, Migration, Incident, and Recovery" />
+
+# Release, Migration, Incident, and Recovery
+
+Change to schemas, event contracts, catalog releases, ML configurations, policies, indexes, or retention is a workflow with explicit owner, compatibility, rollout, observability, and recovery evidence. Nirog uses expand → compatible deploy → bounded idempotent backfill → validation → controlled activation → observation → contract, with rollback/compensation where guardrails fail.
+
+<MermaidDiagram title="Controlled change and incident recovery loop" chart={changeRecovery} />
+
+Incident response contains affected work, preserves redacted audit/control evidence, inspects canonical state/outbox/ledger/provider intent, reconciles uncertainty, rebuilds only derived artifacts, and verifies invariants before controlled resume. Status communication never converts an outage into medication advice or infers dose behavior.
+
+Read [Release and Migration](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/08-operations-and-change/01-release-and-migration.md) and [Incident and Recovery](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/08-operations-and-change/02-incident-and-recovery.md).
+

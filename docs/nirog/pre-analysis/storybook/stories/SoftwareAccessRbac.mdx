@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const rbacGrantModel = `flowchart LR
+  Template[Versioned role template] --> Expand[Grant creation]
+  Registry[Closed permission registry] --> Expand
+  Expand --> Snapshot[Persisted permission_set snapshot]
+  Snapshot --> Evaluate[Per-request access evaluation]
+  Grant[Live profile_access grant] --> Evaluate
+  Owner[Profile owner relationship] --> Evaluate
+  Consent[Consent/purpose state] --> Evaluate
+  Target[Exact resource/profile relation] --> Evaluate
+  Evaluate --> Result[ProfileCapability or safe denial]`;
+
+<Meta title="Nirog / 06 Software and Access Architecture / 02 RBAC Baseline / 62 RBAC Roles, Permissions, and Grants" />
+
+# RBAC Roles, Permissions, and Grants
+
+Nirog implements **RBAC now** through a versioned permission registry and scoped profile grants. Role templates are administrative convenience definitions. When a caregiver grant is created, the template expands into a persisted permission snapshot in `identity.profile_access.permission_set`. Runtime authorization evaluates that snapshot—not the live template—so a later template change cannot silently broaden an old grant.
+
+<MermaidDiagram title="Role template to profile capability" chart={rbacGrantModel} />
+
+An action permission is necessary but never sufficient. Every profile-data decision also proves the actor’s current owner/caregiver relationship, the target resource’s profile scope, applicable consent/purpose, lifecycle state, and the module’s business validation. Team membership remains an invitation/collaboration association, not health-data authority.
+
+**Profile owner** has the full owner workflow through the implicit owner relationship, but never catalog/platform rights or bypass of consent/state checks. **Caregiver viewer** can read profile, regimen, adherence, and evidence metadata, but cannot access raw images, mutate health state, manage devices, or share. **Caregiver participant** adds document contribution and purpose-gated image access, but not regimen/adherence mutation or sharing. **Caregiver manager** adds regimen, adherence, and notification actions, but not ownership transfer, grant delegation, or catalog/platform access.
+
+Read the detailed [RBAC Baseline](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/software-access-architecture/01-rbac-baseline.md).

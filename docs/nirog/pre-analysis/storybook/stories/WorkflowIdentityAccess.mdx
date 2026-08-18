@@ -1,0 +1,23 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const profileGate = `flowchart TD
+  Token[OIDC token] --> Verify[Validate issuer, audience, signature, expiry]
+  Verify --> Account[Load active local account]
+  Account --> Profile[Resolve requested active profile]
+  Profile --> Grant[Evaluate owner/grant, time and permission]
+  Grant --> Purpose[Evaluate current consent/purpose]
+  Purpose --> Scope[Immutable profile capability + RLS scope]
+  Scope --> Action[Invoke owning domain action]`;
+
+<Meta title="Nirog / 04 Design Workflows / 02 Identity and Access / 43 Account, Profile, Sharing, and Consent" />
+
+# Account, Profile, Sharing, and Consent
+
+OIDC proves account identity, while Nirog computes local profile authority. Each profile action re-evaluates ownership or caregiver grant, permission, validity window, consent/purpose, resource relationship, and account/device state. A valid login alone never authorizes a medication action for every profile.
+
+<MermaidDiagram title="Current profile capability before every scoped action" chart={profileGate} />
+
+Caregiver grants use a proposed → pending → active → suspended/revoked/expired lifecycle. Revocation takes effect for new reads/writes immediately and causes dependent queued sensitive work to cancel or no-op after its worker recheck.
+
+Read [Account, Session, and Active Profile](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/01-identity-and-access/01-account-session-and-profile.md) and [Sharing, Consent, and Revocation](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/01-identity-and-access/02-sharing-consent-and-revocation.md).

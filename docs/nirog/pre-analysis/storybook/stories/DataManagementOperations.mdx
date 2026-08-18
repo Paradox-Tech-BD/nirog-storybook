@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const retentionLifecycle = `stateDiagram-v2
+  [*] --> candidate
+  candidate --> held
+  candidate --> approval_required
+  approval_required --> purge_scheduled
+  purge_scheduled --> purging
+  purging --> verified
+  verified --> purged
+  held --> candidate: hold removed
+  purging --> retry_wait
+  retry_wait --> purging
+  purging --> manual_review`;
+
+<Meta title="Nirog / 03 Data Management / 04 Quality and Continuity / 39 Retention, Recovery, and Operability" />
+
+# Retention, Recovery, and Operability
+
+Every Nirog data product has a declared purpose, retention trigger, hold rule, purge method, backup interaction, and recovery owner. A retention job only completes after the database state, private-object lifecycle, indexes/caches, queued work, and audit evidence reconcile.
+
+<MermaidDiagram title="Governed retention and purge lifecycle" chart={retentionLifecycle} />
+
+Recovery is source-aware. A database restore triggers outbox/provider-intent reconciliation; an index is rebuilt from immutable release manifests; a sync defect repairs projections rather than rewriting canonical actions; and an exposure investigation revokes scoped access while preserving minimized audit evidence.
+
+Read [Retention, Recovery, and Data Operability](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/data-management/07-retention-recovery-and-operability.md).

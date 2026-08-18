@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const contextMap = `flowchart LR
+  Patient[Account holder] --> Flutter[Flutter mobile app]
+  Caregiver[Authorized caregiver] --> Flutter
+  Curator[Catalog curator] --> Admin[Admin interface]
+  Operator[Operator] --> Admin
+  Flutter --> Nirog[Nirog backend]
+  Admin --> Nirog
+  Nirog --> OIDC[OIDC provider]
+  Nirog --> Storage[Private object storage]
+  Nirog --> Push[FCM/APNs adapter]
+  Nirog --> ML[Approved ML adapters]
+  Nirog --> Sources[Licensed catalog sources]`;
+
+<Meta title="Nirog / 05 System Architecture / 01 Reconciled Foundation / 52 System Context and Quality Attributes" />
+
+# System Context and Quality Attributes
+
+Nirog is a medication-management system, not an EHR, prescribing engine, or diagnosis service. It lets permitted people preserve evidence, review assisted extraction, explicitly create/manage a personal regimen, report dose behavior, and receive advisory reminder/refill support. The backend—not the client or provider—holds final authority over profile scope, medication state, and retention.
+
+<MermaidDiagram title="System actors, external boundaries, and Nirog trust boundary" chart={contextMap} />
+
+The architecture prioritizes medication safety, confidentiality, explainability, retry correctness, and controlled change. It degrades to manual entry or a clear pending/failure state instead of transforming model/provider uncertainty into a medication action.
+
+Read [System Context and Quality Attributes](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/01-system-context-and-quality-attributes.md).

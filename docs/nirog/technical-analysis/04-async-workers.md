@@ -8,7 +8,7 @@ Nirog’s API must complete profile-authorized commands quickly and atomically. 
 
 ```mermaid
 flowchart LR
-  Outbox[(platform.outbox_event)] --> Relay[Outbox relay]
+  Outbox[(platform.outbox_events)] --> Relay[Outbox relay]
   Relay --> Broker[(Broker)]
   Broker --> P1[ml.ingest / preprocess]
   Broker --> P2[ml.recognize / extract / match]
@@ -94,7 +94,7 @@ Cancellation is cooperative. An API cancellation request marks `scan_job.cancel_
 
 ## 7. Notification and schedule execution
 
-`regimen.changed` and `schedule.changed` events cause a projector to recompute **future** planned doses from the current `regimen_version` and profile timezone. The projector does not alter historical planned doses or dose logs. It writes `regimen.planned_doses` and an outbox event for delivery scheduling.
+`regimen.changed` and `schedule.changed` events cause an Adherence-owned projector to recompute **future** planned doses from the current `regimen_version` and profile timezone. The projector does not alter historical planned doses or dose logs. It writes `adherence.planned_dose_occurrences` and an outbox event for delivery scheduling.
 
 The notification worker creates `adherence.notification_deliveries` with a deterministic delivery key `(planned_dose_id, channel, scheduled_for, revision)`. The worker dispatches to FCM/APNs using the provider’s collapse/idempotency facility where available and records attempted, accepted, failed, acknowledged, snoozed, or expired states. A provider acceptance is not proof that a user saw the reminder; it is delivery telemetry only.
 

@@ -1,0 +1,28 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const lifecycle = `stateDiagram-v2
+  [*] --> collected
+  collected --> active: validated and permitted
+  active --> restricted: narrow sensitive use
+  restricted --> active: result committed
+  active --> revoked: consent/grant/device changes
+  active --> retention_candidate
+  retention_candidate --> purge_pending
+  purge_pending --> purging
+  purging --> verified
+  verified --> purged
+  active --> hold
+  hold --> retention_candidate`;
+
+<Meta title="Nirog / 04 Design Workflows / 05 Async, Privacy, and Operations / 49 Sensitive Data, Revocation, and Retention" />
+
+# Sensitive Data, Revocation, and Retention
+
+Private prescription assets, raw model/provider output, review payloads, profile medication state, consent/grants, and device references each have controlled owner, purpose, access, lifecycle, and recovery behavior. Revocation stops future access/eligible work immediately; it is not confused with immediate deletion of all governed records.
+
+<MermaidDiagram title="Sensitive data lifecycle from collection to verified purge" chart={lifecycle} />
+
+Purge fences new grants and source use, removes/reconciles objects, derivatives, indexes, and queued work, then verifies completion before final state. Restore starts in isolation and reconciles policy, outbox, provider intent, indexes, and current lifecycle state before access resumes.
+
+Read [Sensitive Data Lifecycle, Revocation, and Retention](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/07-privacy-and-retention/01-sensitive-data-lifecycle.md).

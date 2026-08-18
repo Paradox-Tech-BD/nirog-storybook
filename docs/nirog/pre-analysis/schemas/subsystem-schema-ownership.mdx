@@ -38,6 +38,21 @@ erDiagram
 | `adherence` / Adherence and Notifications | `reminder_deliveries`, `notifications`, `dose_logs`, `refill_alerts`, `refill_history`, `adherence_stats` | Regimen/version/planned-dose IDs as immutable foreign references. | Dose logged, refill recorded, notification lifecycle, adherence projection updated. |
 | `platform` / Cross-cutting | `client_commands`, `change_events`, `audit_events`, `provenance_records`, `purge_jobs`, `outbox_events` | Entity ID plus entity type, never business-table ownership. | Ordered sync stream, audit record, outbox delivery, purge completion. |
 
+## Implementation naming reconciliation
+
+The table above is the **pre-analysis ownership map**. Its entity labels intentionally remain readable for product analysis, while the later technical design defines the current PostgreSQL physical-name target. The following mapping removes ambiguity for implementation work without changing the settled ownership model.
+
+| Pre-analysis logical label | Canonical implementation target | Notes |
+|---|---|---|
+| `users`, `auth_providers`, `user_preferences`, `devices` | `identity.accounts`, `identity.auth_identities`, `identity.account_preferences`, `identity.devices` | An account is the local application actor; OIDC identity linkage is separate from credentials. |
+| `patient_profiles`, `profile_access`, `consent_records` | `identity.patient_profiles`, `identity.profile_access`, `identity.consents` | Profile authority and purpose-bound consent remain separate records. |
+| `catalog_releases`, `medicine_products`, `generic_ingredients` | `catalog.releases`, `catalog.products`, `catalog.ingredients` | Published releases are immutable; product rows remain release-bound. |
+| `prescription_documents`, `ocr_scans`, `ocr_lines`, `medication_reviews` | `prescription.documents`, `prescription.scan_jobs`, `prescription.extracted_lines`, `prescription.review_payloads` and `prescription.review_decisions` | Scan status is materialized; stage/evidence/review history is append-oriented. |
+| `medication_regimens`, `schedule_rules`, `planned_doses` | `regimen.regimens`, `regimen.schedule_policies`, `adherence.planned_dose_occurrences` | The Regimen module owns schedule policy; Adherence owns projected occurrences. |
+| `dose_logs`, `reminder_deliveries`, `notifications` | `adherence.dose_events`, `adherence.notification_deliveries`, `adherence.notification_intents` | User dose evidence remains distinct from reminder execution/delivery telemetry. |
+
+The [technical persistence architecture](../../technical-analysis/05-api-persistence-security.md) and [data-domain ownership model](../../data-management/01-data-domains-and-ownership.md) are the authoritative sources for new physical migrations. Earlier conceptual names should not be copied into new SQL, ORM, or migration code.
+
 ## Reference versus private health data
 
 | Concept | Storage owner | Visibility | Example |

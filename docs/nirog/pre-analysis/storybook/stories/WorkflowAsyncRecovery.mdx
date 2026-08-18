@@ -1,0 +1,30 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const recoveryFlow = `flowchart TD
+  Commit[Domain commit + audit + outbox] --> Relay[Outbox relay publishes stable event]
+  Relay --> Worker[Scoped worker claims consumer lease]
+  Worker --> Current[Re-read source, policy, version, cancellation]
+  Current --> Valid{Still valid?}
+  Valid -- no --> Noop[Record cancelled/superseded no-op]
+  Valid -- yes --> Intent[Persist provider intent if external]
+  Intent --> Run[Commit owned effect]
+  Run --> Done[Mark consumer completed]
+  Run --> Temp[Temporary failure]
+  Temp --> Retry[Persist bounded retry]
+  Run --> Unknown[Outcome unknown]
+  Unknown --> Reconcile[Reconcile deterministic provider key]
+  Run --> Terminal[Permanent/contract failure]
+  Terminal --> DLQ[Redacted DLQ recovery case]`;
+
+<Meta title="Nirog / 04 Design Workflows / 05 Async, Privacy, and Operations / 48 Committed Effects, Retry, DLQ, and Reconciliation" />
+
+# Committed Effects, Retry, DLQ, and Reconciliation
+
+Nirog treats the database as authoritative and queue delivery as at-least-once. The original command commits business state, audit, idempotency outcome, and outbox event together. Consumers claim a ledger lease, re-read current state, and then complete one owned effect or a durable safe no-op before acknowledging delivery.
+
+<MermaidDiagram title="Reliable deferred-effect and recovery workflow" chart={recoveryFlow} />
+
+Retries are bounded and only for temporary still-relevant work. A provider request with an unknown outcome is reconciled by deterministic intent/key before any resend. A dead-letter entry is a redacted operator workflow that reconstructs a fresh current-state attempt; it never blindly republishes an old payload.
+
+Read [Committed Effect and Worker Claim](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/06-async-and-recovery/01-committed-effect-and-worker-claim.md) and [Retry, Dead-Letter, and Reconciliation](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/design-workflows/06-async-and-recovery/02-retry-dead-letter-and-reconciliation.md).

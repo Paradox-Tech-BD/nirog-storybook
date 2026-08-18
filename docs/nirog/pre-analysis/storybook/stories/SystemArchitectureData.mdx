@@ -1,0 +1,31 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const dataMap = `flowchart LR
+  Identity[identity accounts, profiles,
+grants, consent, devices] --> Evidence[prescription documents,
+scan jobs, stage lineage, review]
+  Catalog[catalog immutable releases,
+products, index releases] --> Evidence
+  Evidence -->|authorized command| Regimen[regimen plans, versions,
+schedule policy, inventory]
+  Regimen --> Adherence[adherence future occurrences,
+dose events, notifications]
+  Platform[platform idempotency,
+audit, outbox, ledger, sync, retention] -. controls .-> Evidence
+  Platform -. controls .-> Regimen
+  Platform -. controls .-> Adherence
+  Assets[(Private restricted assets)] --- Evidence`;
+
+<Meta title="Nirog / 05 System Architecture / 02 Runtime and Ownership / 55 Canonical Data, Schema, and Provenance" />
+
+# Canonical Data, Schema, and Provenance
+
+PostgreSQL holds canonical transactional state and durable control records. Private object storage holds restricted binary/text artifacts by manifest reference. Catalog releases, evidence/manifests, review decisions, regimen versions, dose events, audit, and provenance preserve historical meaning. Search indexes, cache, future occurrence projection, summaries, and provider-delivery views are rebuildable and never become medication authority.
+
+<MermaidDiagram title="Canonical module schemas, provenance, and derived data boundaries" chart={dataMap} />
+
+The reconciliation establishes current physical targets such as `identity.accounts`, `catalog.releases`, `prescription.scan_jobs`, `regimen.regimens`, `adherence.dose_events`, and `platform.outbox_events`. `profile_id` narrows data ownership but never authorizes a request without current capability, repository scope, and RLS.
+
+Read [Canonical Data, Schema, and Provenance Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/04-canonical-data-schema-and-provenance.md).
+

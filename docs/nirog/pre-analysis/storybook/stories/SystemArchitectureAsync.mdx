@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const asyncFlow = `flowchart TD
+  Commit[Aggregate + audit + idempotency + outbox commit] --> Relay[Claim/publish committed event]
+  Relay --> Worker[Worker claims consumer ledger lease]
+  Worker --> Check[Re-read current state/version/policy]
+  Check --> Valid{Still valid?}
+  Valid -- no --> Noop[Record safe cancelled/superseded no-op]
+  Valid -- yes --> Intent[Persist external intent if required]
+  Intent --> Effect[Commit owned effect]
+  Effect --> Done[Complete ledger]
+  Effect --> Retry[Bounded temporary retry]
+  Effect --> Reconcile[Unknown outcome reconciliation]
+  Effect --> DLQ[Terminal redacted recovery case]`;
+
+<Meta title="Nirog / 05 System Architecture / 03 Interfaces, Evidence, and Async / 58 Event, Worker, and Consistency Architecture" />
+
+# Event, Worker, and Consistency Architecture
+
+Nirog is strongly consistent inside an owner command transaction and deliberately eventually consistent for derived projections/external effects. The outbox prevents lost dual writes; delivery can repeat. Consumers claim `platform.consumer_ledger`, verify fresh source state, and commit one owned effect, durable retry, safe no-op, reconciliation request, or recovery record.
+
+<MermaidDiagram title="Committed event through idempotent worker recovery" chart={asyncFlow} />
+
+The broker is never authoritative. External provider uncertainty is reconciled with a deterministic intent/key before resend. Dead-letter recovery starts a new attempt from authoritative current state; it never blindly republishes an old sensitive message.
+
+Read [Event, Worker, and Consistency Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/07-event-worker-and-consistency-architecture.md).

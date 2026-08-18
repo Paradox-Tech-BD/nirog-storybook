@@ -1,0 +1,28 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const validationPipeline = `flowchart LR
+  T[1 Transport/content] --> S[2 Strict schema]
+  S --> A[3 Authenticated actor]
+  A --> P[4 RBAC permission]
+  P --> R[5 Resource relation]
+  R --> C[6 Consent/purpose]
+  C --> V[7 State/version]
+  V --> B[8 Business rules]
+  B --> I[9 Idempotency]
+  I --> D[10 Persistence constraints]
+  D --> O[11 Audit/outbox/response]`;
+
+<Meta title="Nirog / 06 Software and Access Architecture / 03 Enforcement and Privacy / 64 Validation Architecture" />
+
+# Validation Architecture
+
+Nirog validates requests as a fixed **server-side pipeline**, not a single Pydantic model. Strong transport/schema checks reject malformed input early; access gates prove that the current actor may act on the exact resource; aggregate/state and domain checks prove that the proposed transition is valid; idempotency, constraints, audit, and outbox controls complete the transaction.
+
+<MermaidDiagram title="Layered command-validation pipeline" chart={validationPipeline} />
+
+The command boundary separates an untrusted transport model from a frozen application command. The command carries an evaluated capability, typed identifiers, an idempotency key, request correlation metadata, and the expected aggregate version. It never carries a raw request, token, or frontend-provided permission list.
+
+The **transport and schema gates** enforce JSON/multipart contracts, size/type limits, strict fields and enums, and UUID/timezone/range rules. The **access and scope gates** require a permitted action, exact profile relationship, and current consent/purpose. The **state and business gates** check review/manual source, lifecycle transition, release/schedule/inventory rules, and optimistic version. The **reliability gates** bind idempotency/fingerprint, apply database constraints and RLS, and write the audit/change/outbox record atomically.
+
+Read the complete [Validation Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/software-access-architecture/03-validation-architecture.md).

@@ -83,7 +83,7 @@ Raw OCR output and source crops are restricted health evidence. Telemetry stores
 
 ## 5. Enforceable review and activation gate
 
-The only path to regimen creation is `POST /scan-jobs/{id}/review-decisions`. The command validates all of the following inside one transaction:
+The only **evidence-assisted** path to regimen creation is `POST /scan-jobs/{id}/review-decisions`. It is not the only product path: a separately authorized manual regimen command may create a regimen without a scan job. The evidence-assisted command validates all of the following inside one transaction:
 
 1. The caller currently holds `regimen.write` on the scan’s profile.
 2. The scan is in a reviewable status and the submitted `evidenceVersion` equals the immutable review payload.
@@ -92,7 +92,7 @@ The only path to regimen creation is `POST /scan-jobs/{id}/review-decisions`. Th
 5. The decision key has not already been applied with different content.
 6. A `review.confirmed.v1` event is written to the outbox only for an explicit confirm command.
 
-The Regimen consumer verifies the review-decision ID, profile, evidence version, and policy findings before creating an initial `regimen_version`. It does not trust an ML event, candidate score, or client-supplied product ID by itself.
+Within the authorized review command boundary, the Evidence route invokes the Regimen module command synchronously. The Regimen module verifies the review-decision ID, profile, evidence version, and policy findings before creating an initial `regimen_version`; the later outbox event is for derived schedule/notification work, not regimen creation. It does not trust an ML event, candidate score, or client-supplied product ID by itself.
 
 ## 6. Policy engine and confidence treatment
 

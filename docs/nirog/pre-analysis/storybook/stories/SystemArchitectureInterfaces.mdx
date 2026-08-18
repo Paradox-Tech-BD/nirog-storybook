@@ -1,0 +1,30 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const interfaceFlow = `sequenceDiagram
+  participant App as Flutter client
+  participant IdP as OIDC provider
+  participant API as FastAPI API
+  participant Policy as Profile policy
+  participant Owner as Owner module
+  participant DB as PostgreSQL
+  App->>IdP: Authorization Code + PKCE
+  App->>API: Token + profile reference + command
+  API->>API: Validate issuer/audience/signature/expiry
+  API->>Policy: Current capability and purpose
+  Policy-->>API: Allow or safe denial
+  API->>Owner: Typed authorized command
+  Owner->>DB: Aggregate + audit + idempotency + outbox
+  API-->>App: Resource or 202 job reference`;
+
+<Meta title="Nirog / 05 System Architecture / 03 Interfaces, Evidence, and Async / 56 API, Mobile, and External Interfaces" />
+
+# API, Mobile, and External Interfaces
+
+Flutter is an online/offline intent client, not the clinical authority. Nirog validates OIDC identity, evaluates a current profile capability, executes an owner command with idempotency and version precondition, then returns committed state or a job resource. Upload/read uses short-lived restricted storage capability; async work is polled/subscribed through authorized resources, never queue internals.
+
+<MermaidDiagram title="Authenticated Flutter command path" chart={interfaceFlow} />
+
+Offline commands carry a client event ID and base version. The backend returns accepted, previously applied, conflict, or rejected resolution. External adapters for OIDC, storage, ML, push, and catalog sources are typed, module-owned, minimized-egress boundaries with timeout/retry/release telemetry rules.
+
+Read [API, Mobile, and External Interface Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/05-api-mobile-and-external-interface-architecture.md).

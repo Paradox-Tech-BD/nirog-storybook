@@ -1,0 +1,32 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const runtimeMap = `flowchart TB
+  Edge[TLS edge and rate limits] --> API[FastAPI API replicas]
+  API --> DB[(PostgreSQL)]
+  API --> Assets[(Private object storage)]
+  DB --> Relay[Outbox relay]
+  Relay --> Broker[(Redis-compatible broker)]
+  Broker --> ML[ML evidence pool]
+  Broker --> Catalog[Catalog/index pool]
+  Broker --> Project[Projection/sync pool]
+  Broker --> Notify[Notification pool]
+  Broker --> Maint[Maintenance/recovery pool]
+  API --> O[Redacted telemetry]
+  ML --> O
+  Catalog --> O
+  Project --> O
+  Notify --> O
+  Maint --> O`;
+
+<Meta title="Nirog / 05 System Architecture / 02 Runtime and Ownership / 53 Runtime, Process, and Deployment Topology" />
+
+# Runtime, Process, and Deployment Topology
+
+Nirog starts as a modular monolith with separate API, relay, and worker processes—not separately owned microservices. All business modules share one authoritative PostgreSQL cluster and module contracts, while dedicated pools isolate expensive ML, catalog, notification, projection, and maintenance work from user-facing API capacity.
+
+<MermaidDiagram title="One authoritative database with independently scaled process classes" chart={runtimeMap} />
+
+API replicas own validated synchronous commands and never wait for model inference, import/index build, or push-provider completion. Workers use scoped identities and module services; they do not become a parallel policy layer. Redis-compatible infrastructure supports broker/cache functions but is not authoritative medication, authorization, or evidence state.
+
+Read [Runtime, Process, and Deployment Topology](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/system-architecture/02-runtime-process-and-deployment-topology.md).

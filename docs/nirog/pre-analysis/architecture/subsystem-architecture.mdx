@@ -302,9 +302,9 @@ classDiagram
 
 | Table family | Owner | Why it is separate from a patient regimen |
 |---|---|---|
-| `catalog.catalog_releases`, `catalog.catalog_sources`, `catalog.match_index_releases` | Medicine Catalog | Makes product facts and OCR match behavior reproducible. |
-| `catalog.medicine_products`, `catalog.manufacturers`, `catalog.dosage_forms` | Medicine Catalog | Represents a product/presentation available in the reference catalog. |
-| `catalog.generic_ingredients`, `catalog.product_ingredients`, `catalog.drug_classes`, `catalog.indications` | Medicine Catalog | Represents pharmacological reference relationships rather than a patient’s instructions. |
+| `catalog.releases`, `catalog.sources`, `catalog.index_releases` | Medicine Catalog | Makes product facts and OCR match behavior reproducible. |
+| `catalog.products`, `catalog.manufacturers`, `catalog.dosage_forms` | Medicine Catalog | Represents a product/presentation available in the reference catalog. |
+| `catalog.ingredients`, `catalog.product_ingredients`, `catalog.drug_classes`, `catalog.indications` | Medicine Catalog | Represents pharmacological reference relationships rather than a patient’s instructions. |
 | `catalog.product_aliases` | Medicine Catalog | Stores approved spelling, transliteration, and brand aliases for matching. |
 
 ## 6. Prescription and ML Evidence subsystem
@@ -327,7 +327,8 @@ The user’s `Medicine` entity belongs here **after** it has been interpreted as
 |---|---|---|
 | `regimen.medication_regimens` | Medication Regimen | Profile-specific current state: active, paused, ended, or superseded. |
 | `regimen.regimen_versions` | Medication Regimen | Immutable instruction versions: dose, unit, route, timing, dates, change reason. |
-| `regimen.schedule_rules`, `regimen.planned_doses` | Medication Regimen | Canonical schedule meaning and projected administrations. |
+| `regimen.schedule_policies` | Medication Regimen | Canonical schedule meaning; it publishes schedule changes for projection. |
+| `adherence.planned_dose_occurrences` | Adherence and Notifications | Derived future administrations linked to the source regimen version; rebuildable without rewriting historical dose evidence. |
 | `regimen.inventory_movements`, `regimen.refill_rules` | Medication Regimen | Advisory supply estimation and refill thresholds using base units. |
 | `regimen.unresolved_medications` | Medication Regimen | Private manual/unmatched item; never added to shared search without curation. |
 

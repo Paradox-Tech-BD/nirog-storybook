@@ -1,0 +1,18 @@
+# Design Workflows Index
+
+The Design Workflows library gathers Nirog’s complete backend and mobile workflows in one location. It makes workflow ownership, state transition, asynchronous boundary, safety gate, failure outcome, and operational recovery explicit.
+
+| Reading sequence | Folder | Core question |
+|---|---|---|
+| 00 | [Foundations](./00-foundations/) | What does every Nirog workflow need to declare? |
+| 01 | [Identity and Access](./01-identity-and-access/) | Who can act for which profile, purpose, and time? |
+| 02 | [Reference Catalog](./02-reference-catalog/) | How does shared medicine data move from source to release and safe match context? |
+| 03 | [Prescription Evidence](./03-prescription-evidence/) | How does restricted evidence move from upload through review without automatic medication action? |
+| 04 | [Regimen and Adherence](./04-regimen-and-adherence/) | How does an authorized confirmation become a versioned regimen, schedule, dose, and refill history? |
+| 05 | [Mobile and Notification](./05-mobile-and-notification/) | How does Flutter synchronize safe user intent and how do reminders remain distinct from dose-taking evidence? |
+| 06 | [Async and Recovery](./06-async-and-recovery/) | How do outbox, worker state, retry, dead-letter, and reconciliation preserve reliable effects? |
+| 07 | [Privacy and Retention](./07-privacy-and-retention/) | How do revocation, restricted data lifecycle, holds, purge, and access review operate? |
+| 08 | [Operations and Change](./08-operations-and-change/) | How do releases, migrations, incidents, restores, and reconciliation change the system safely? |
+
+The workflow library complements, but does not replace, the **Technical Analysis** and **Data Management** roots. It is where their decisions are combined into step-by-step execution designs.
+

@@ -1,5 +1,9 @@
-# Nirog Documentation Maintenance Guide
+# Nirog Documentation Structure
 
-The published documentation entry point is `index.mdx`; the main Notion-ready implementation document is `backend-blueprint.mdx`. Keep the primary blueprint, API contract, schema documents, and any affected ADR synchronized in each change.
+The Nirog documentation root now separates completed **general pre-analysis** from future technical analysis.
 
-The supporting Markdown and YAML files are intentionally retained as developer-facing source artifacts. They are version-controlled alongside the MDX blueprint so the documentation remains useful whether viewed through the Storybook documentation site, GitHub, an editor, or Notion.
+- [`pre-analysis/`](./pre-analysis/) contains all completed requirements, research, safety boundaries, logical domain/API/schema material, and the final coherence check.
+- [`preview/`](./preview/) is the self-contained native Storybook application that renders the pre-analysis pages and diagrams.
+- `technical-analysis/` will be created only when the product owner explicitly authorizes the technical-analysis phase.
+
+The canonical handoff document is [`pre-analysis/final-coherence-check.md`](./pre-analysis/final-coherence-check.md).

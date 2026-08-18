@@ -1,30 +1,25 @@
 ---
-title: Nirog Backend Documentation
+title: Nirog Documentation
 sidebar:
   order: 900
 ---
 
-# Nirog Backend Documentation
+# Nirog Documentation
 
-This section is the canonical home for Nirog documentation within the Storybook fork. It contains a cohesive backend blueprint for the Flutter-to-ML prescription workflow, together with implementation contracts, data schemas, architecture decisions, source references, and operational requirements.
+Nirog documentation is currently at the end of its **general pre-analysis** phase. The completed analysis corpus has been grouped in [`pre-analysis/`](./pre-analysis/). The native Storybook presentation lives in [`preview/`](./preview/), while its source-controlled documentation pages are visible through the published Storybook instance.
 
-> **Primary document:** [Nirog Backend Blueprint](./backend-blueprint.mdx). It is written so it can be copied directly into Notion. The standard Mermaid blocks render as flowcharts, sequence diagrams, state diagrams, and ER diagrams when pasted into a Notion Mermaid block.
+## Current status
 
-## Documentation map
+The product boundary, ML evidence rules, user/profile authority model, catalog distinction, regimen activation boundary, logical schemas, API baseline, and subsystem interactions are documented and coherent at the general-analysis level. Technical analysis has **not** started; it will begin only on an explicit product-owner instruction.
 
-| Topic | Location |
+## Navigation
+
+| Destination | Purpose |
 |---|---|
-| Backend architecture, API, data model, diagrams, security, and roadmap | [Backend Blueprint](./backend-blueprint.mdx) |
-| Grouped systems, ownership boundaries, and integration events | [Subsystem Architecture](./architecture/subsystem-architecture.mdx) and [Subsystem Interactions](./architecture/subsystem-interactions.mdx) |
-| Product boundary and backend feature map | [`requirements/`](./requirements/) |
-| Core system and ML integration contracts | [`architecture/`](./architecture/) |
-| Machine-readable HTTP contract | [`api/openapi.yaml`](./api/openapi.yaml) |
-| Domain schema and JSON examples | [`schemas/`](./schemas/) |
-| Table ownership by subsystem | [Subsystem Schema Ownership](./schemas/subsystem-schema-ownership.mdx) |
-| Long-lived architectural decisions | [`adr/`](./adr/) |
-| Quality, security, and operational design | [`operations/`](./operations/) |
-| Whitepaper and external source register | [`references/`](./references/) |
+| [General Pre-Analysis](./pre-analysis/) | Completed requirements, research, conceptual architecture, schemas, API baseline, and final coherence check. |
+| [Final Coherence Check](./pre-analysis/final-coherence-check.md) | Read this before authorizing technical analysis. |
+| `preview/` | Self-contained native Storybook application that presents the general pre-analysis interactively. |
 
-## Maintenance rule
+## Technical-analysis boundary
 
-When a change affects API fields, schemas, ML stages, release artifacts, catalog behavior, or user-visible documentation, update the blueprint and the related source contract in the same pull request. Future Nirog documentation changes are made in this section of the fork.
+When authorized, implementation-level artifacts will be added under `docs/nirog/technical-analysis/`. They will specify runtime/deployment, backend modules, physical persistence, API implementation, ML worker engineering, Flutter integration, and security/operations mechanics while preserving the pre-analysis product decisions unless they are explicitly changed.

@@ -1,0 +1,30 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const phaseBoundary = `flowchart LR
+  A[Completed General Pre-Analysis] --> B[Final Coherence Check]
+  B --> C{Product owner authorizes technical analysis?}
+  C -->|No| D[Maintain and refine pre-analysis only]
+  C -->|Yes, later| E[Create Technical Analysis Pack]
+  E --> F[Implementation-ready architecture, persistence, API, ML, mobile, operations]
+  D -. No technical design starts .-> E`;
+
+<Meta title="Nirog / 15 Pre-Analysis Handoff" />
+
+# General Pre-Analysis Handoff
+
+The Storybook pages currently present the completed **general pre-analysis**. They establish the intended product behavior and conceptual constraints. They do not constitute an implementation-ready technical design, and the technical-analysis phase has not started.
+
+<MermaidDiagram title="Nirog pre-analysis to technical-analysis boundary" chart={phaseBoundary} />
+
+## What is complete
+
+The pre-analysis has settled the safety boundary, profile and caregiver authority model, prescription-as-evidence rule, catalog/regimen distinction, explicit confirmation step, versioning expectations, notification/adherence separation, subsystem ownership, logical ER model, proposed API shapes, and ML provenance requirements.
+
+## What is intentionally deferred
+
+Technical analysis will later make implementation decisions about the runtime, storage, queue, workers, physical PostgreSQL schema, API middleware, object-storage controls, synchronization implementation, mobile integration, observability, and production release operations. It will begin only when the product owner requests it.
+
+## Canonical handoff source
+
+Read the complete [Final General Pre-Analysis Coherence Check](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/pre-analysis/final-coherence-check.md) before authorizing the next phase.

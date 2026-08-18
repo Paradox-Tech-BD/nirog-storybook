@@ -1,0 +1,29 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const mlSafetyBoundary = `flowchart LR
+  Doc[Restricted prescription document] --> Stages[Versioned ML stage runs]
+  Stages --> Evidence[Lines, fields and candidates]
+  Evidence --> Policy[Calibrated review policy]
+  Policy --> Review[Immutable review payload]
+  Review --> Decision{Authorized user decision}
+  Decision -->|Confirm| Command[review.confirmed event]
+  Command --> Regimen[Regimen module creates version]
+  Decision -->|Edit/reject/unresolved| Private[Private decision record]
+  Stages -. cannot write .-> Regimen`;
+
+<Meta title="Nirog / 20 Technical ML Safety" />
+
+# Technical ML Evidence and Safety
+
+The technical ML architecture treats every inference as evidence. The source document, preprocessing derivative, OCR lines, extracted fields, ranked catalog candidates, policy result, and user decision remain linked through immutable, versioned records.
+
+<MermaidDiagram title="The only path from ML evidence to a regimen" chart={mlSafetyBoundary} />
+
+## Non-negotiable enforcement
+
+ML workers receive stage references, not user tokens or broad profile data. They write stage-run results inside the Prescription/ML Evidence boundary. They cannot write regimen, schedule, inventory, reminder, or notification tables. The sole regimen path is an authenticated review command that validates evidence version, profile permission, catalog release, edited values, and idempotency.
+
+Confidence is a policy input that routes to review, manual entry, or failure. It is never a treatment-activation state.
+
+Read the complete [ML Evidence Pipeline and Safety Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/03-ml-evidence-safety.md).

@@ -1,0 +1,32 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const outboxFlow = `sequenceDiagram
+  participant C as Domain command
+  participant DB as PostgreSQL
+  participant R as Outbox relay
+  participant Q as Broker
+  participant W as Idempotent worker
+  C->>DB: Aggregate + audit + outbox in one transaction
+  DB-->>C: Commit
+  R->>DB: Claim committed event
+  R->>Q: Publish event
+  Q->>W: At-least-once delivery
+  W->>DB: Record consumer event + owned effect
+  W->>DB: Commit or retry safely`;
+
+<Meta title="Nirog / 21 Technical Asynchronous Workers" />
+
+# Asynchronous Workers and Reliability
+
+Nirog uses dedicated queues for ML stages, catalog import/indexing, notifications, schedule/adherence projections, sync compaction, evaluation, and retention maintenance. The API does not wait for any of these workloads.
+
+<MermaidDiagram title="Transactional outbox and idempotent consumer flow" chart={outboxFlow} />
+
+## Reliability rules
+
+Every committed domain change writes an outbox event in the same transaction. The relay may publish duplicates, so each consumer uses a ledger keyed by consumer and event ID. Retryable failures apply bounded backoff and jitter; permanent failures do not loop. Each queue has a DLQ with redacted diagnostics and an operator recovery path.
+
+Dedicated worker pools keep long-running ML work from starving notifications, schedule projection, or mobile synchronization.
+
+Read the complete [Asynchronous Workers, Queues, and Reliability Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/04-async-workers.md).

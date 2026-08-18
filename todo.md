@@ -35,3 +35,19 @@ The synchronized site-facing branch was pushed to GitHub as `next` at `d0a182197
 - [x] Publish the repair to GitHub `main` and the synchronized `next` hosting branch.
 
 The supplied wide screenshot was inspected in two overlapping original-image crops. It confirms that the Workflow Library Overview page renders a Markdown table literally, including `| Workflow sequence | Design outcome |` and its pipe-delimited rows, rather than as structured content. The repository-wide Storybook MDX scan found the same unsupported pattern in exactly three overview pages: Workflow Library Overview, Data Management Overview, and Unified System Architecture Overview. Each is now rewritten as readable labelled prose, and the final syntax scan found no remaining pipe-led table markup. A clean native Storybook build completed successfully, and the repaired Workflow Library Overview was visually confirmed with its Mermaid diagram and labelled outcomes rendered correctly. The repair was pushed as `3b32c285163` on `main` and `8d6ef82360a` on `next`.
+
+## Implementation technology stack
+
+- [x] Reconcile the existing backend, ML, Flutter, privacy, RBAC, async, data, and operations decisions into implementation selection criteria.
+- [x] Research and select a justified technology stack with versions, alternatives, and concrete integration boundaries.
+- [x] Write the implementation-stack, local-development, quality/testing, operations, and developer-documentation decision set.
+- [x] Add the new implementation stack to Storybook, build it, and verify representative pages.
+- [ ] Push the implementation selection library to GitHub `main` and synchronized `next`.
+
+The decision library is written under `docs/nirog/implementation-stack/`. It defines the selected Python/FastAPI/PostgreSQL/Celery/Valkey/S3/OIDC/OpenTelemetry/OpenTofu/ECS Fargate baseline; exact layer and worker rules; the RBAC-to-PBAC, evidence-only ML, and Flutter/OpenAPI contracts; quality and CI controls; the Storybook plus OpenAPI/Redocly documentation split; and the first safe implementation milestones.
+
+The expanded native Storybook build completed successfully. The `07 Implementation Stack` group is visible with five logical areas, and its overview plus quality/delivery pages rendered their selected-stack and CI-to-operations Mermaid diagrams correctly.
+
+The selected baseline is Python 3.13 with FastAPI and Pydantic v2; PostgreSQL 18 with SQLAlchemy 2, `asyncpg`, Alembic, and RLS; Celery 5.6 with managed Valkey transport and PostgreSQL-based outbox/consumer ledger; private S3/KMS evidence storage; OpenTelemetry and redacted structured telemetry; a validated OpenAPI-to-Flutter contract; Docker/OpenTofu/GitHub Actions; and an AWS ECS Fargate production profile. Storybook MDX/Mermaid remains the human architecture hub, while FastAPI OpenAPI plus Redocly becomes the executable API documentation and governance layer.
+
+The stack must preserve a modular FastAPI/Python monolith with explicit application/domain/port/infrastructure layers, strict Pydantic transport models and immutable command types, PostgreSQL as the canonical authority with transaction-scoped RLS defense in depth, private object storage for evidence, a Redis-compatible broker/cache, separately scaled worker pools, OIDC/OAuth2 actor resolution, current profile capability evaluation, RBAC with a future policy evaluator seam, Flutter-safe OpenAPI/change-feed contracts, transactional outbox/idempotency, and redacted end-to-end observability.

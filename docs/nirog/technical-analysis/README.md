@@ -13,6 +13,8 @@
 | [`04-async-workers.md`](./04-async-workers.md) | Outbox, queues, workers, retry semantics, DLQ, notifications, and sync. |
 | [`05-api-persistence-security.md`](./05-api-persistence-security.md) | FastAPI modules, PostgreSQL layout, API conventions, RLS defense, and data controls. |
 | [`06-operations-deployment.md`](./06-operations-deployment.md) | Environment topology, secrets, observability, release gates, backups, and runbooks. |
+| [`07-async-failure-and-security-review.md`](./07-async-failure-and-security-review.md) | Detailed worker lifecycle, retry/DLQ/reconciliation controls, and layered authentication/security enforcement. |
+| [`08-deployment-and-scaling-guide.md`](./08-deployment-and-scaling-guide.md) | Deployable workload units, scaling signals, rollout/migration controls, capacity governance, and recovery drills. |
 | [`presentation-script.md`](./presentation-script.md) | Speaker-ready script summarizing the pre-analysis and ML integration. |
 | [`references.md`](./references.md) | Technical-analysis source register. |
 

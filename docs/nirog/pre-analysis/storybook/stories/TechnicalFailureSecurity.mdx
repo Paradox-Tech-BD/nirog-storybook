@@ -1,0 +1,60 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const workerRecovery = `sequenceDiagram
+  participant R as Outbox relay
+  participant Q as Broker
+  participant W as Scoped worker
+  participant L as Consumer ledger
+  participant P as External provider
+  R->>Q: Publish committed event
+  Q->>W: At-least-once delivery
+  W->>L: Claim event and lease
+  W->>W: Re-read state and validate version
+  W->>P: Request with deterministic key
+  alt durable owned effect
+    W->>L: Complete with output reference
+  else transient dependency fault
+    W->>L: Schedule bounded retry
+  else permanent/policy fault
+    W->>L: Terminal failure and DLQ reference
+  end`;
+
+export const layeredSecurity = `flowchart TB
+  C[Flutter or admin client] --> O[OIDC authorization server]
+  C --> G[TLS ingress, WAF and rate limits]
+  G --> T[FastAPI token verifier]
+  T --> A[Immutable ActorContext]
+  A --> P[Profile policy and consent evaluator]
+  P --> R[Scoped repository]
+  R --> DB[(PostgreSQL RLS)]
+  T --> S[Short-lived object capability]
+  W[Worker workload identity] --> WR[Scoped worker repository]
+  WR --> DB
+  W --> OS[Private object storage]
+  T --> Audit[Redacted audit trail]
+  W --> Audit`;
+
+<Meta title="Nirog / 24 Async Failure Handling and Security" />
+
+# Async Failure Handling and Security
+
+This detailed review explains how Nirog turns its worker architecture into a safe operational lifecycle and how its authentication, authorization, data, process, storage, and audit controls compose into one security model.
+
+<MermaidDiagram title="A durable worker lifecycle handles duplicate delivery and classified failure" chart={workerRecovery} />
+
+## Failure handling in practice
+
+The API commits business state, audit, idempotency outcome, and an outbox record together. Relays and brokers may deliver an event more than once, so each worker uses a consumer ledger and re-reads authoritative state before applying an owned effect. Transient failures receive bounded backoff; policy, input, stale-version, and deterministic configuration faults do not retry blindly. Dead-letter items are recovery decisions—not passive storage—and requeue from current state rather than stale payload.
+
+Unknown external-provider outcomes receive special treatment: worker intent is durable, provider requests use deterministic idempotency keys, and reconciliation determines whether a request was accepted before any resend.
+
+<MermaidDiagram title="Layered authentication and authorization controls" chart={layeredSecurity} />
+
+## Security and authentication layers
+
+OIDC establishes the account identity and produces an immutable backend `ActorContext`. A server-side profile policy then evaluates ownership, active caregiver grant, permission set, consent, time validity, and resource relation for every sensitive request. Repository scoping and PostgreSQL RLS add independent constraints, while worker identities, private evidence storage, purpose-bound capability URLs, secret management, network controls, and redacted audit logs reduce process and data exposure.
+
+Neither an access token, a profile ID, a team membership, an object UUID, nor a queue message is authorization by itself. ML workers have only evidence-stage permissions and cannot write regimen, adherence, notification, or profile-access state.
+
+Read the complete [Detailed Review: Asynchronous Failure Handling and Security Layers](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/07-async-failure-and-security-review.md).

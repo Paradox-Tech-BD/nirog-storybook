@@ -1,0 +1,39 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const scaleTopology = `flowchart TB
+  Edge[TLS ingress, WAF, rate limits] --> API[FastAPI API replicas]
+  API --> DB[(PostgreSQL primary)]
+  API --> Store[(Private object storage)]
+  DB --> Outbox[Transactional outbox]
+  Outbox --> Broker[(Broker)]
+  Broker --> Relay[Outbox relay]
+  Broker --> ML[ML worker pool]
+  Broker --> Project[Projection/schedule pool]
+  Broker --> Notify[Notification pool]
+  Broker --> Catalog[Catalog/index pool]
+  Broker --> Ops[Maintenance/evaluation pool]
+  API --> O[Metrics, traces, redacted logs]
+  ML --> O
+  Project --> O
+  Notify --> O
+  Catalog --> O
+  Ops --> O`;
+
+<Meta title="Nirog / 25 Deployment and Scaling Guide" />
+
+# Deployment and Scaling Guide
+
+Nirog deploys and scales workload classes separately without prematurely splitting the modular FastAPI backend into microservices. The API, outbox relay, ML workers, projections, notification dispatch, catalog/index jobs, and maintenance workers each receive independent identities, queue bindings, resource limits, health checks, monitoring, and scale signals.
+
+<MermaidDiagram title="Workload units scale independently around one authoritative database" chart={scaleTopology} />
+
+## Scaling posture
+
+API replicas scale from request concurrency, latency, resource use, and database-pool wait time. Worker pools scale from queue age/depth, measured task duration, provider quota, cost/budget, and task-specific resource constraints. PostgreSQL connection budget is a hard cap on API scale-out; broker queue depth is never the only worker signal; and ML saturation triggers delayed/manual-entry behavior rather than blocking the core medication workflow.
+
+## Safe operations
+
+The guide defines isolated development/staging/production environments, environment-scoped secrets and identities, graceful worker draining, queue backpressure, expand/migrate/contract schema changes, canary releases, release-specific rollback, backups/PITR, restoration drills, and capacity review cadence. Derived queues, projections, and indexes can be rebuilt from PostgreSQL authoritative state after recovery.
+
+Read the complete [Deployment and Scaling Guide](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/technical-analysis/08-deployment-and-scaling-guide.md).

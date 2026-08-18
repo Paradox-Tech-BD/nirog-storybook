@@ -8,6 +8,8 @@
 | [Transactional Outbox Pattern, Microservices.io](https://microservices.io/patterns/data/transactional-outbox.html) | Reliable committed-event publication and idempotent consumer requirement. |
 | [Celery Tasks documentation](https://docs.celeryq.dev/en/stable/userguide/tasks.html) | Idempotent tasks, acknowledgements, retries, backoff, routing, logging, and sensitive-argument cautions. |
 | [Transactional Outbox Pattern, AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html) | Duplicate delivery, ordering, outbox relay, and consumer deduplication considerations. |
+| [Kubernetes Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) | Resource/custom metric autoscaling principles for separately scaled API and worker workloads. |
+| [PostgreSQL High Availability, Load Balancing, and Replication](https://www.postgresql.org/docs/current/different-replication-solutions.html) | Read-replica consistency and replication trade-offs in the deployment guide. |
+| [PostgreSQL `CREATE INDEX`](https://www.postgresql.org/docs/current/sql-createindex.html) | Concurrent index-build and migration operational considerations. |
 
 The technical recommendations in this pack combine these sources with the Nirog pre-analysis. They remain implementation architecture, not a claim that any named vendor or library is mandatory.
-

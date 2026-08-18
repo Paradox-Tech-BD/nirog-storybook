@@ -1,0 +1,37 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const authorizationChain = `sequenceDiagram
+  autonumber
+  participant Client as Flutter/Admin client
+  participant Route as FastAPI dependency
+  participant OIDC as OIDC verifier
+  participant Access as ProfilePolicyService
+  participant Owner as Resource owner
+  participant Service as Module service
+  participant DB as Scoped repository + RLS
+  Client->>Route: Request + token + profile/resource reference
+  Route->>OIDC: Validate token and resolve account
+  OIDC-->>Route: Immutable ActorContext
+  Route->>Owner: Resolve typed target scope safely
+  Owner-->>Route: Resource/profile relation
+  Route->>Access: Authorize exact action and target
+  Access-->>Route: ProfileCapability or safe deny
+  Route->>Service: Typed command/query + capability
+  Service->>DB: Scoped data access with RLS context
+  DB-->>Service: Authorized rows only
+  Service-->>Client: Safe representation or problem`;
+
+<Meta title="Nirog / 06 Software and Access Architecture / 03 Enforcement and Privacy / 63 Access Control Enforcement" />
+
+# Access Control Enforcement
+
+Authorization is evaluated server-side for every protected API request and restricted worker action. OIDC validates identity; the profile policy service evaluates current owner/grant, persisted permission snapshot, consent/purpose, target relationship, and trusted context; module repositories add a profile scope; PostgreSQL RLS supplies a second row-level barrier.
+
+<MermaidDiagram title="OIDC-to-capability authorization chain" chart={authorizationChain} />
+
+This layered sequence prevents broken object-level authorization: a valid permission for profile A does not allow a guessed document, regimen, or occurrence ID from profile B. In sensitive flows, an inaccessible target is indistinguishable from absence to the caller, while an internal redacted event retains the correlation and safe reason code for investigation.
+
+At the **route dependency**, Nirog establishes token validity and the typed action/resource declaration. The **profile policy service** resolves the current owner/grant, permission snapshot, consent/purpose, and resource scope. The **owner service and repository** prove the exact target-to-profile relationship through scoped SQL, while **PostgreSQL RLS** provides defensive row filtering under transaction-local actor/profile context. **Object storage and workers** use short-lived, purpose-bound capabilities and narrow workload identities.
+
+Read [Access Control Enforcement](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/software-access-architecture/02-access-control-enforcement.md) and [Audit and Observability](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/software-access-architecture/04-audit-and-observability.md).

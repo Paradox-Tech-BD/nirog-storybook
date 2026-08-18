@@ -1,0 +1,25 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const pbacEvolution = `flowchart LR
+  P0[Freeze RBAC contract] --> P1[Extract PolicyEvaluator interface]
+  P1 --> P2[Assemble typed trusted facts]
+  P2 --> P3[Shadow policy evaluation]
+  P3 --> P4[Constrain-only cohort enforcement]
+  P4 --> P5[Governed wider policy use]
+  P3 -. mismatch/health issue .-> Rollback[Return to RBAC-only]
+  P4 -. required policy unavailable .-> FailSafe[Safe deny or unavailable]`;
+
+<Meta title="Nirog / 06 Software and Access Architecture / 04 Policy Evolution / 65 RBAC to PBAC Evolution" />
+
+# RBAC to PBAC Evolution
+
+Nirog’s future policy-based access control (**PBAC**) capability is an extension seam, not a replacement project. The existing RBAC grant snapshot remains the baseline authority. A future `PolicyEvaluator` receives only trusted, typed facts—subject, relationship, resource, action, consent/purpose, environment, and policy revision—and returns a controlled allow/deny decision plus narrow obligations.
+
+<MermaidDiagram title="Non-breaking RBAC-to-PBAC rollout" chart={pbacEvolution} />
+
+The first policy rollout is **constrain-only**: a policy can add a denial condition for an already RBAC-permitted request, but it cannot allow an action that lacks a current owner/caregiver relationship and persisted permission. This preserves existing grants while supporting future conditions such as evidence classification, time-bound delegation, purpose-bound worker access, controlled export, or step-up session requirements.
+
+**Evaluator extraction** is protected by golden tests that prove the extracted RBAC evaluator matches current behavior. **Typed policy facts** prevent policies from reading arbitrary tables, parsing client attributes, or receiving raw health payloads. **Shadow evaluation** collects mismatch, latency, and error evidence safely before enforcement. A **cohort constraint** rolls out a narrow deny rule with policy revision, audit, monitoring, and rollback. A **policy failure** never defaults to allow; restricted writes and evidence access fail safely.
+
+Read the detailed [RBAC to PBAC Evolution](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/software-access-architecture/05-rbac-to-pbac-evolution.md).

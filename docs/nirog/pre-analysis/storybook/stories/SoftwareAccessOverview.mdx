@@ -1,0 +1,26 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const modularArchitecture = `flowchart TB
+  Route[FastAPI route / worker entrypoint] --> Transport[API adapters and dependency wiring]
+  Transport --> App[Application command/query service]
+  App --> Domain[Domain aggregates and policies]
+  App --> Ports[Typed repository and adapter ports]
+  Ports --> Infra[PostgreSQL, object storage, broker, OIDC/provider adapters]
+  Infra -. implements .-> Ports
+  App --> Controls[Authorization, audit, idempotency, outbox]
+  Shared[Small shared kernel: IDs, errors, time, telemetry] --> App`;
+
+<Meta title="Nirog / 06 Software and Access Architecture / 01 Modular Software / 61 Software Architecture Overview" />
+
+# Software Architecture Overview
+
+Nirog remains a **modular FastAPI monolith**. Each domain owns its behavior, application services, persistence schema, migrations, API contract, and emitted events. Routes and workers are thin entrypoints; they call the same typed application services rather than containing parallel business logic.
+
+<MermaidDiagram title="Module-owned layers and typed ports" chart={modularArchitecture} />
+
+The software pattern isolates framework and vendor details from domain rules. A protected command starts with a typed request, resolves an immutable actor and capability, validates domain/state rules, then atomically writes owned state with a redacted audit record, idempotency result, and outbox event. The architecture preserves the established rules that ML workers cannot create regimen/adherence state and that user confirmation is required before regimen activation.
+
+**API adapters** parse and version HTTP contracts and map safe problems without deciding domain behavior. **Application services** orchestrate one command or query, invoke authorization and validation, and coordinate the transaction. **Domain code** enforces aggregates, value objects, lifecycle transitions, and deterministic business invariants. **Ports and infrastructure adapters** keep repositories, brokers, object storage, OIDC, and provider SDKs behind narrow typed interfaces.
+
+Read the [Software and Access Architecture library](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/software-access-architecture/README.md) and the detailed [Modular Software Architecture](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/software-access-architecture/00-modular-software-architecture.md).

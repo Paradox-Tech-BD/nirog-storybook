@@ -1,0 +1,31 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const databasePlan = `flowchart TB
+  Schema[Typed Drizzle schema modules] --> Generate[drizzle-kit generate]
+  Generate --> Review[Reviewed generated and manual SQL]
+  Review --> Migrator[nirog_migrator one-shot task]
+  Migrator --> PG[(PostgreSQL 18 + pgvector)]
+  API[Core transaction] --> Context[set_config local actor/profile/purpose]
+  Context --> RLS[PostgreSQL RLS policies]
+  RLS --> PG
+  PG --> Ledger[AI usage ledger + balance]
+  PG --> Platform[audit + outbox + idempotency + consumer ledger]`;
+
+<Meta title="Nirog / 08 Implementation Inception / 03 Persistence / 83 Drizzle and RLS" />
+
+# Drizzle and RLS
+
+**PostgreSQL remains the clinical authority.** Drizzle supplies typed schema declarations, query construction, and generated migration scaffolding. PostgreSQL still enforces foreign keys, checks, uniqueness, database roles, RLS, and durable ledger constraints.
+
+<MermaidDiagram title="Drizzle migration and transaction safety model" chart={databasePlan} />
+
+## Reviewed migration model
+
+Drizzle-generated migration SQL is reviewed alongside explicit handwritten SQL for schemas, database roles, `pgcrypto`/`pgvector`, grants, RLS policies, local context functions, partial indexes, concurrent indexes, and controlled backfills. The one-shot migrator is the only process with DDL privileges.
+
+**RLS is defense in depth.** A Core transaction sets account, profile, purpose, and workload context with transaction-local configuration. API roles are non-owners without `BYPASSRLS`; a missing context must deny scoped data access.
+
+**The AI ledger is authoritative accounting.** Server-owned request intents reserve an approved user/account budget before provider work. Immutable ledger entries settle actual trusted usage, release unused holds, or enter reconciliation. Client token counts and costs are never trusted.
+
+Read the full [Database, Drizzle, and Schema Plan](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/02-database-drizzle-and-schema-plan.md).

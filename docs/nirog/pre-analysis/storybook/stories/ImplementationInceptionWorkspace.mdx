@@ -1,0 +1,32 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const workspace = `flowchart TB
+  Root[nirog-core pnpm workspace] --> API[apps/api\nFastify HTTP + internal commands]
+  Root --> Dispatcher[apps/dispatcher\noutbox publisher]
+  Root --> Migrator[apps/migrator\none-shot database migrations]
+  Root --> Contracts[packages/contracts\nversioned envelopes and commands]
+  Root --> DB[packages/db\nDrizzle schema + RLS SQL]
+  Root --> Access[packages/access\ncapability and policy evaluator]
+  Root --> Queue[packages/queue\nSQS + consumer ledger]
+  Root --> ML[workers/ml\nPython worker image]`;
+
+<Meta title="Nirog / 08 Implementation Inception / 02 Workspace / 82 Backend Filesystem" />
+
+# Backend Filesystem
+
+The new private **`nirog-core`** repository is a pnpm workspace and a modular monolith. It creates one shared contract and quality boundary while separating executable responsibilities: API, migrator, dispatcher, and Python worker images.
+
+<MermaidDiagram title="Nirog backend workspace" chart={workspace} />
+
+## Module discipline
+
+Every business module has `domain`, `application`, `infrastructure`, and `http` areas. HTTP converts a validated request into a typed command. The application handler owns authorization, state checks, idempotency, transaction, audit, and outbox. Infrastructure implements ports; domain logic imports neither Fastify nor Drizzle.
+
+**Typed contracts are central.** `packages/contracts` owns versioned public API shapes, events, and restricted internal commands. Consumers never deserialize a producer’s tables directly.
+
+**Workload identity is separate.** The dispatcher can publish outbox envelopes but not run clinical commands. The migrator owns DDL but serves no HTTP traffic. Python workers do not receive direct clinical database credentials.
+
+**Strapi stays out of this workspace.** Its independent Yarn/Strapi lifecycle lives in a separate private `nirog-strapi-admin` repository and communicates only through a signed release handoff.
+
+Read the full [Backend Workspace and Filesystem plan](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/01-backend-workspace-and-filesystem.md).

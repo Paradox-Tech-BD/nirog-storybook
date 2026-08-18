@@ -1,0 +1,35 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const topology = `flowchart LR
+  Flutter[Flutter] --> Core[Nirog Core\nNode 24 + Fastify + TypeBox + Drizzle]
+  Workforce[Workforce editor] --> Strapi[Bounded Strapi admin]
+  Core --> PG[(Clinical PostgreSQL + RLS)]
+  Core --> S3[Private evidence storage]
+  Core --> Outbox[Transactional outbox]
+  Outbox --> SQS[SQS + DLQ]
+  SQS --> Worker[Python ML/RAG worker]
+  Worker --> Internal[Restricted Core command]
+  Internal --> Core
+  Strapi --> Handoff[Signed catalog handoff]
+  Handoff --> Core`;
+
+<Meta title="Nirog / 08 Implementation Inception / 01 Platform / 81 Bounded Strapi Decision" />
+
+# Bounded Strapi Decision
+
+Nirog adopts a **bounded Strapi topology**. The clinical system of record is **Nirog Core**: a TypeScript modular monolith using Node 24, Fastify, TypeBox, Drizzle, PostgreSQL, explicit RLS, and Scalar. Strapi is a separate workforce administration plane, not the patient-data backend.
+
+<MermaidDiagram title="Nirog Core, bounded Strapi, and worker topology" chart={topology} />
+
+## Why this boundary is deliberate
+
+**Nirog Core owns clinical authority.** It is the only service that provides Flutter APIs, evaluates patient profile capability, applies consent and resource checks, writes clinical tables, emits audit/outbox records, and serves Scalar/OpenAPI contracts.
+
+**Strapi earns a narrow role.** A pinned Strapi project can accelerate workforce catalog drafting, controlled knowledge authoring, editorial templates, and optional administration tooling. It has its own database, workforce identity provider, storage boundary, upgrade lifecycle, and custom plugin surface.
+
+**No shared clinical database.** Strapi cannot read or write patient records. A reviewed catalog release crosses the boundary as a signed, versioned handoff command; Core validates it and writes an immutable catalog release itself.
+
+**Python remains a worker runtime.** OCR, embedding, and retrieval workers consume minimum-necessary queue envelopes, then return evidence or retrieval results through restricted Core commands. They cannot activate a regimen or create adherence state.
+
+Read the full [Platform Decision and Boundaries](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/00-platform-decision-and-boundaries.md).

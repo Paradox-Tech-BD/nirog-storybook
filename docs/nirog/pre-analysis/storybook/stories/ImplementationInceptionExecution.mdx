@@ -1,0 +1,34 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const execution = `flowchart LR
+  S0[Decisions and repositories] --> S1[Workspace and Docker]
+  S1 --> S2[Database roles and Drizzle migrations]
+  S2 --> S3[Fastify platform and Scalar]
+  S3 --> S4[Identity and RBAC capability]
+  S4 --> S5[Idempotency, audit, outbox, DLQ]
+  S5 --> S6[Catalog and Strapi handoff]
+  S6 --> S7[Evidence and Python OCR]
+  S7 --> S8[Regimen and adherence]
+  S8 --> S9[Approved RAG and AI ledger]`;
+
+<Meta title="Nirog / 08 Implementation Inception / 05 Delivery Plan / 85 Staged Environment Execution" />
+
+# Staged Environment Execution
+
+The environment is assembled in **dependency order**. Each stage leaves a runnable system with its own tests and acceptance gate. Authorization, audit, event delivery, and AI accounting are foundational controls, not late-stage features.
+
+<MermaidDiagram title="Nirog staged implementation path" chart={execution} />
+
+## First code milestone
+
+The first implementation slice stops before business endpoints. It creates the private workspace, Docker Compose, typed configuration, Fastify health endpoints, safe problems, OpenAPI/Scalar, Drizzle migration pipeline, PostgreSQL roles, RLS test fixture, audit/outbox/idempotency/consumer-ledger tables, and architecture/integration test harnesses.
+
+No patient route, real OIDC credential, AI provider call, Strapi handoff, or OCR integration enters the first slice. Those workflows are only introduced with their exact data authority, command contract, safety checks, and tests.
+
+## Delivery gates
+
+Every database change includes migration rehearsal and RLS tests. Every API change includes an OpenAPI diff and Flutter compatibility statement. Every worker change includes duplicate, timeout, retry, and evidence-only-output tests. Every AI operation includes a quota reservation/settlement ledger trail. Every Strapi change includes a signed handoff and immutable Core release test.
+
+Read the full [Docker, Tests, and Delivery Controls](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/05-docker-tests-and-delivery-controls.md) and [Staged Environment Execution Plan](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/06-staged-environment-execution-plan.md).
+

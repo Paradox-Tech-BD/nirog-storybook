@@ -1,0 +1,43 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const runtime = `sequenceDiagram
+  autonumber
+  participant Client as Flutter
+  participant API as Fastify + TypeBox
+  participant Access as OIDC + profile policy
+  participant DB as Drizzle transaction + RLS
+  participant Outbox as Outbox dispatcher
+  participant Queue as SQS
+  participant Worker as Python ML/RAG worker
+
+  Client->>API: Typed request + token + idempotency key
+  API->>Access: Resolve actor and capability
+  Access-->>API: Permit exact profile action or safe deny
+  API->>DB: State, consent, relation, idempotency, audit, outbox
+  DB-->>API: Serialized safe receipt
+  DB->>Outbox: Committed event
+  Outbox->>Queue: Versioned envelope
+  Queue->>Worker: Minimum-necessary job
+  Worker->>API: Restricted result command
+  API->>DB: Validate current stage and persist evidence only`;
+
+<Meta title="Nirog / 08 Implementation Inception / 04 Runtime / 84 Access, Scalar, and Workers" />
+
+# Access, Scalar, and Workers
+
+Fastify and TypeBox validate the transport contract; they do not replace Nirog’s full command-validation and authorization pipeline. Each command then resolves a local OIDC actor, persisted RBAC permission snapshot, exact profile/resource relation, consent/purpose, state/version, idempotency, and database constraints.
+
+<MermaidDiagram title="Validated command to asynchronous evidence flow" chart={runtime} />
+
+## Scalar as the live developer reference
+
+The same Fastify route schemas generate `/openapi.json` and a Scalar reference at `/reference`. OpenAPI snapshots are linted and compared in CI; generated Flutter clients consume a reviewed API release rather than hand-maintained models. Internal worker operations are excluded from the public reference or served through a distinct restricted specification.
+
+## Worker and RAG safety
+
+The outbox dispatcher publishes only committed events. Python consumers use a consumer ledger for duplicate safety, re-check current state, and invoke restricted internal Core commands. OCR output and RAG results are evidence or assistance. They cannot mutate regimen/adherence state or make medication decisions.
+
+Retrieval begins with approved catalog and governed knowledge material in PostgreSQL/pgvector. Patient-specific RAG is deferred pending its own consent, retention, redaction, source-admission, and safety decision.
+
+Read the full [Access, Validation, and API Documentation plan](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/03-access-validation-and-api-documentation.md) and [Async, ML/RAG, and AI Usage Ledger plan](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/04-async-ml-rag-and-ai-usage-ledger.md).

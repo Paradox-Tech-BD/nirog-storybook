@@ -1,0 +1,28 @@
+---
+title: Nirog Backend Documentation
+sidebar:
+  order: 900
+---
+
+# Nirog Backend Documentation
+
+This section is the canonical home for Nirog documentation within the Storybook fork. It contains a cohesive backend blueprint for the Flutter-to-ML prescription workflow, together with implementation contracts, data schemas, architecture decisions, source references, and operational requirements.
+
+> **Primary document:** [Nirog Backend Blueprint](./backend-blueprint.mdx). It is written so it can be copied directly into Notion. The standard Mermaid blocks render as flowcharts, sequence diagrams, state diagrams, and ER diagrams when pasted into a Notion Mermaid block.
+
+## Documentation map
+
+| Topic | Location |
+|---|---|
+| Backend architecture, API, data model, diagrams, security, and roadmap | [Backend Blueprint](./backend-blueprint.mdx) |
+| Product boundary and backend feature map | [`requirements/`](./requirements/) |
+| Core system and ML integration contracts | [`architecture/`](./architecture/) |
+| Machine-readable HTTP contract | [`api/openapi.yaml`](./api/openapi.yaml) |
+| Domain schema and JSON examples | [`schemas/`](./schemas/) |
+| Long-lived architectural decisions | [`adr/`](./adr/) |
+| Quality, security, and operational design | [`operations/`](./operations/) |
+| Whitepaper and external source register | [`references/`](./references/) |
+
+## Maintenance rule
+
+When a change affects API fields, schemas, ML stages, release artifacts, catalog behavior, or user-visible documentation, update the blueprint and the related source contract in the same pull request. Future Nirog documentation changes are made in this section of the fork.

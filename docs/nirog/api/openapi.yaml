@@ -1,0 +1,604 @@
+openapi: 3.1.0
+info:
+  title: Nirog Mobile Backend API
+  version: 0.1.0
+  description: |
+    Proposed contract for the Nirog prescription-evidence, ML review, regimen,
+    adherence, and offline-sync workflow. This is an implementation baseline, not a clinical API.
+servers:
+  - url: https://api.example.nirog.app/v1
+security:
+  - bearerAuth: []
+paths:
+  /profiles:
+    get:
+      summary: List profiles visible to the authenticated actor
+      responses:
+        '200':
+          description: Visible profiles
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProfileSummary' }
+  /profiles/{profileId}/prescription-documents:
+    post:
+      summary: Create a prescription document and upload manifest
+      description: |
+        The client selects the target profile explicitly. Each page is uploaded through a short-lived
+        upload capability issued by this command; the request never trusts a client supplied owner id.
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pages]
+              properties:
+                clientDocumentId: { type: string, format: uuid }
+                pages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [pageNumber, contentType, byteSize, sha256]
+                    properties:
+                      pageNumber: { type: integer, minimum: 1 }
+                      contentType: { type: string, enum: [image/jpeg, image/png, image/heic] }
+                      byteSize: { type: integer, minimum: 1, maximum: 15728640 }
+                      sha256: { type: string, pattern: '^[a-fA-F0-9]{64}$' }
+      responses:
+        '201':
+          description: Document created; pages can be uploaded to the returned capabilities
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrescriptionDocumentUpload' }
+        '409': { $ref: '#/components/responses/IdempotencyConflict' }
+  /prescription-documents/{documentId}/scan-jobs:
+    post:
+      summary: Enqueue ML processing after all document pages are uploaded
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientRequestMode: { type: string, enum: [asynchronous], default: asynchronous }
+      responses:
+        '202':
+          description: Job accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScanJob' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /scan-jobs/{scanJobId}:
+    get:
+      summary: Read materialized scan status and review payload
+      parameters:
+        - $ref: '#/components/parameters/ScanJobId'
+      responses:
+        '200':
+          description: Scan job
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScanJob' }
+  /scan-jobs/{scanJobId}/review-decisions:
+    post:
+      summary: Persist explicit review decisions for one or more extracted lines
+      description: |
+        A review can accept a matched product, save a private unresolved item, edit evidence-derived fields,
+        or reject the line. This endpoint does not activate a regimen unless `activateRegimen` is requested
+        and all policy gates pass.
+      parameters:
+        - $ref: '#/components/parameters/ScanJobId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [documentVersion, decisions]
+              properties:
+                documentVersion: { type: integer, minimum: 1 }
+                decisions:
+                  type: array
+                  minItems: 1
+                  items: { $ref: '#/components/schemas/LineReviewDecisionInput' }
+      responses:
+        '200':
+          description: Review accepted; any schedule activation result is explicit per line
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/LineReviewDecisionResult' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /medicine-catalog/search:
+    get:
+      summary: Search approved catalog products for manual entry or review correction
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 120 }
+        - in: query
+          name: catalogReleaseId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: strength
+          schema: { type: string, maxLength: 64 }
+        - in: query
+          name: dosageForm
+          schema: { type: string, maxLength: 64 }
+      responses:
+        '200':
+          description: Products are returned with catalog release and verification context
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [catalogReleaseId, data]
+                properties:
+                  catalogReleaseId: { type: string, format: uuid }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/MedicineProduct' }
+  /profiles/{profileId}/regimens:
+    get:
+      summary: List the profile's current and historical regimens
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, paused, ended, all], default: active }
+      responses:
+        '200':
+          description: Regimen items
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, changeCursor]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/RegimenItem' }
+                  changeCursor: { type: string }
+  /regimen-items/{regimenItemId}/versions:
+    post:
+      summary: Create a new version of a regimen item
+      description: Critical medication changes are versioned and require a base version precondition.
+      parameters:
+        - $ref: '#/components/parameters/RegimenItemId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [baseVersion, changeReason, dosageInstruction]
+              properties:
+                baseVersion: { type: integer, minimum: 1 }
+                changeReason: { type: string, enum: [user_edit, stop, resume, correction, clinician_instruction, other] }
+                dosageInstruction: { $ref: '#/components/schemas/DosageInstruction' }
+                regimenStatus: { type: string, enum: [active, paused, ended] }
+      responses:
+        '201':
+          description: New version and schedule specification
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegimenItem' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /profiles/{profileId}/dose-events:
+    post:
+      summary: Append a user-reported dose event
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DoseEventInput' }
+      responses:
+        '201':
+          description: Dose event appended
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DoseEvent' }
+  /sync/commands:
+    post:
+      summary: Ingest offline device commands exactly once
+      description: Used by the mobile queue. Commands may be accepted, already applied, rejected, or conflict-bound.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId, commands]
+              properties:
+                deviceId: { type: string, format: uuid }
+                commands:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { $ref: '#/components/schemas/OfflineCommand' }
+      responses:
+        '200':
+          description: Per-command resolution
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, nextCursor]
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/CommandResult' }
+                  nextCursor: { type: string }
+  /sync/changes:
+    get:
+      summary: Read ordered changes visible to the authenticated device
+      parameters:
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 500, default: 200 }
+      responses:
+        '200':
+          description: Ordered, policy-filtered change feed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, nextCursor, hasMore]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ChangeEvent' }
+                  nextCursor: { type: string }
+                  hasMore: { type: boolean }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ProfileId:
+      in: path
+      name: profileId
+      required: true
+      schema: { type: string, format: uuid }
+    DocumentId:
+      in: path
+      name: documentId
+      required: true
+      schema: { type: string, format: uuid }
+    ScanJobId:
+      in: path
+      name: scanJobId
+      required: true
+      schema: { type: string, format: uuid }
+    RegimenItemId:
+      in: path
+      name: regimenItemId
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema: { type: string, minLength: 16, maxLength: 128 }
+  responses:
+    ValidationError:
+      description: Validation or safety policy failed
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    VersionConflict:
+      description: The command was based on stale medication-critical state
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    IdempotencyConflict:
+      description: The idempotency key was reused with a different request body
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    ProfileSummary:
+      type: object
+      required: [id, displayName, relationship, permissionSummary]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        relationship: { type: string, enum: [self, dependent, caregiver_shared] }
+        permissionSummary: { type: array, items: { type: string } }
+    PrescriptionDocumentUpload:
+      type: object
+      required: [documentId, status, pageUploads]
+      properties:
+        documentId: { type: string, format: uuid }
+        status: { type: string, enum: [awaiting_upload] }
+        pageUploads:
+          type: array
+          items:
+            type: object
+            required: [pageNumber, uploadUrl, expiresAt]
+            properties:
+              pageNumber: { type: integer }
+              uploadUrl: { type: string, format: uri }
+              expiresAt: { type: string, format: date-time }
+    ScanJob:
+      type: object
+      required: [id, documentId, status, progress, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        documentId: { type: string, format: uuid }
+        status: { type: string, enum: [queued, processing, ready_for_review, review_required, manual_entry_recommended, failed, cancelled] }
+        progress:
+          type: object
+          required: [stage, percent]
+          properties:
+            stage: { type: string, enum: [ingest, preprocess, recognize, organize, extract, match, policy, complete] }
+            percent: { type: integer, minimum: 0, maximum: 100 }
+        reviewPayload: { $ref: '#/components/schemas/ScanReviewPayload' }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time }
+    ScanReviewPayload:
+      type: object
+      required: [documentVersion, policyOutcome, lines, evidenceManifest]
+      properties:
+        documentVersion: { type: integer, minimum: 1 }
+        policyOutcome: { type: string, enum: [ready_for_review, review_required, manual_entry_recommended] }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/ExtractedMedicationLine' }
+        evidenceManifest:
+          type: object
+          required: [modelReleaseId, catalogReleaseId, policyReleaseId]
+          properties:
+            modelReleaseId: { type: string, format: uuid }
+            catalogReleaseId: { type: string, format: uuid }
+            policyReleaseId: { type: string, format: uuid }
+    ExtractedMedicationLine:
+      type: object
+      required: [id, sourceEvidence, fields, reviewState]
+      properties:
+        id: { type: string, format: uuid }
+        sourceEvidence:
+          type: object
+          required: [pageNumber, text, region]
+          properties:
+            pageNumber: { type: integer }
+            text: { type: string, description: Verbatim recognized source text; restricted health evidence. }
+            region:
+              type: object
+              properties:
+                x: { type: number }
+                y: { type: number }
+                width: { type: number }
+                height: { type: number }
+        fields:
+          type: object
+          properties:
+            medicineName: { $ref: '#/components/schemas/FieldCandidate' }
+            quantity: { $ref: '#/components/schemas/FieldCandidate' }
+            unit: { $ref: '#/components/schemas/FieldCandidate' }
+            route: { $ref: '#/components/schemas/FieldCandidate' }
+            frequency: { $ref: '#/components/schemas/FieldCandidate' }
+            duration: { $ref: '#/components/schemas/FieldCandidate' }
+            instructions: { $ref: '#/components/schemas/FieldCandidate' }
+        matchCandidates:
+          type: array
+          items: { $ref: '#/components/schemas/MatchCandidate' }
+        reviewState: { type: string, enum: [unreviewed, blocked, reviewed, rejected] }
+    FieldCandidate:
+      type: object
+      required: [rawValue, normalizedValue, validation]
+      properties:
+        rawValue: { type: string }
+        normalizedValue: {}
+        sourceLineIds: { type: array, items: { type: string, format: uuid } }
+        validation: { type: string, enum: [valid, missing, ambiguous, invalid] }
+        calibratedConfidence: { type: number, minimum: 0, maximum: 1 }
+    MatchCandidate:
+      type: object
+      required: [product, rank, matchPolicyOutcome, evidence]
+      properties:
+        product: { $ref: '#/components/schemas/MedicineProduct' }
+        rank: { type: integer, minimum: 1 }
+        matchPolicyOutcome: { type: string, enum: [preselected, alternative, incompatible] }
+        evidence:
+          type: object
+          properties:
+            calibratedLikelihood: { type: number, minimum: 0, maximum: 1 }
+            scoreMargin: { type: number }
+            compatibility: { type: array, items: { type: string, enum: [name, ingredient, strength, dosage_form, route] } }
+            scoreFeatures: { type: object, additionalProperties: { type: number } }
+    MedicineProduct:
+      type: object
+      required: [id, displayName, market, verificationStatus, catalogReleaseId]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        brandName: { type: string }
+        genericDisplay: { type: string }
+        ingredients: { type: array, items: { type: string } }
+        strengthDisplay: { type: string }
+        dosageForm: { type: string }
+        route: { type: string }
+        manufacturerName: { type: string }
+        market: { type: string, enum: [BD] }
+        verificationStatus: { type: string, enum: [approved, under_review, inactive] }
+        catalogReleaseId: { type: string, format: uuid }
+    LineReviewDecisionInput:
+      type: object
+      required: [lineId, decision, evidenceVersion]
+      properties:
+        lineId: { type: string, format: uuid }
+        decision: { type: string, enum: [accept_match, save_unresolved, reject] }
+        evidenceVersion: { type: string, format: uuid }
+        selectedProductId: { type: string, format: uuid }
+        editedDosageInstruction: { $ref: '#/components/schemas/DosageInstruction' }
+        unresolvedName: { type: string, maxLength: 160 }
+        activateRegimen: { type: boolean, default: false }
+    LineReviewDecisionResult:
+      type: object
+      required: [lineId, reviewDecisionId, outcome]
+      properties:
+        lineId: { type: string, format: uuid }
+        reviewDecisionId: { type: string, format: uuid }
+        outcome: { type: string, enum: [saved_draft, regimen_activated, blocked, rejected] }
+        regimenItem: { $ref: '#/components/schemas/RegimenItem' }
+        policyFindings: { type: array, items: { type: string } }
+    DosageInstruction:
+      type: object
+      required: [doseQuantity, doseUnit, timing]
+      properties:
+        doseQuantity: { type: number, exclusiveMinimum: 0 }
+        doseUnit: { type: string, enum: [tablet, capsule, ml, drop, puff, sachet, unit, other] }
+        route: { type: string, enum: [oral, topical, ophthalmic, otic, inhaled, nasal, injection, other, unspecified] }
+        timing:
+          oneOf:
+            - $ref: '#/components/schemas/TimesOfDayTiming'
+            - $ref: '#/components/schemas/IntervalTiming'
+            - $ref: '#/components/schemas/WeeklyTiming'
+            - $ref: '#/components/schemas/PrnTiming'
+        mealRelation: { type: string, enum: [before_food, after_food, with_food, unspecified] }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time }
+        maxDailyQuantity: { type: number, exclusiveMinimum: 0 }
+        freeTextInstruction: { type: string, maxLength: 500 }
+    TimesOfDayTiming:
+      type: object
+      required: [kind, localTimes]
+      properties:
+        kind: { type: string, const: times_of_day }
+        localTimes: { type: array, minItems: 1, maxItems: 8, items: { type: string, pattern: '^([01]\\d|2[0-3]):[0-5]\\d$' } }
+    IntervalTiming:
+      type: object
+      required: [kind, everyHours]
+      properties:
+        kind: { type: string, const: interval }
+        everyHours: { type: integer, minimum: 1, maximum: 168 }
+    WeeklyTiming:
+      type: object
+      required: [kind, daysOfWeek, localTime]
+      properties:
+        kind: { type: string, const: weekly }
+        daysOfWeek: { type: array, minItems: 1, items: { type: integer, minimum: 1, maximum: 7 } }
+        localTime: { type: string, pattern: '^([01]\\d|2[0-3]):[0-5]\\d$' }
+    PrnTiming:
+      type: object
+      required: [kind, conditionText]
+      properties:
+        kind: { type: string, const: prn }
+        conditionText: { type: string, maxLength: 240 }
+    RegimenItem:
+      type: object
+      required: [id, profileId, version, status, medicationReference, dosageInstruction, scheduleSpecification]
+      properties:
+        id: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        status: { type: string, enum: [active, paused, ended] }
+        medicationReference:
+          type: object
+          oneOf:
+            - required: [catalogProductId]
+              properties: { catalogProductId: { type: string, format: uuid } }
+            - required: [unresolvedMedicationId]
+              properties: { unresolvedMedicationId: { type: string, format: uuid } }
+        dosageInstruction: { $ref: '#/components/schemas/DosageInstruction' }
+        scheduleSpecification:
+          type: object
+          required: [timezone, occurrences]
+          properties:
+            timezone: { type: string, example: Asia/Dhaka }
+            occurrences: { type: array, items: { type: object, properties: { localTime: { type: string }, label: { type: string } } } }
+        sourceReviewDecisionId: { type: string, format: uuid }
+        effectiveFrom: { type: string, format: date-time }
+        effectiveTo: { type: string, format: date-time }
+    DoseEventInput:
+      type: object
+      required: [regimenItemId, eventType, occurredAt]
+      properties:
+        regimenItemId: { type: string, format: uuid }
+        plannedOccurrenceId: { type: string, format: uuid }
+        eventType: { type: string, enum: [taken, user_reported_skipped, snoozed] }
+        occurredAt: { type: string, format: date-time }
+        note: { type: string, maxLength: 280 }
+    DoseEvent:
+      allOf:
+        - $ref: '#/components/schemas/DoseEventInput'
+        - type: object
+          required: [id, reporterType, createdAt]
+          properties:
+            id: { type: string, format: uuid }
+            reporterType: { type: string, enum: [profile_owner, caregiver, system] }
+            createdAt: { type: string, format: date-time }
+    OfflineCommand:
+      type: object
+      required: [clientEventId, profileId, type, occurredAt, payload]
+      properties:
+        clientEventId: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
+        type: { type: string, enum: [dose_event, regimen_version, preference_update] }
+        entityId: { type: string, format: uuid }
+        baseVersion: { type: integer, minimum: 1 }
+        occurredAt: { type: string, format: date-time }
+        payload: { type: object }
+    CommandResult:
+      type: object
+      required: [clientEventId, status]
+      properties:
+        clientEventId: { type: string, format: uuid }
+        status: { type: string, enum: [accepted, already_applied, rejected, conflict] }
+        serverEntityVersion: { type: integer }
+        problem: { $ref: '#/components/schemas/Problem' }
+    ChangeEvent:
+      type: object
+      required: [id, sequence, type, profileId, occurredAt, payload]
+      properties:
+        id: { type: string, format: uuid }
+        sequence: { type: integer, minimum: 1 }
+        type: { type: string }
+        profileId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+        payload: { type: object }
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        code: { type: string }
+        detail: { type: string }
+        fields: { type: object, additionalProperties: { type: string } }

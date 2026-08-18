@@ -1,0 +1,27 @@
+{
+  "id": "a0c9b1f0-98de-40d3-a659-434599f429bf",
+  "profileId": "55ac90c9-09d5-4a77-9486-b7f29e4e159e",
+  "version": 1,
+  "status": "active",
+  "medicationReference": { "catalogProductId": "6c16e30b-f537-4c63-a12b-b58da90f8a07" },
+  "dosageInstruction": {
+    "doseQuantity": 1,
+    "doseUnit": "tablet",
+    "route": "oral",
+    "timing": { "kind": "times_of_day", "localTimes": ["08:00", "20:00"] },
+    "mealRelation": "after_food",
+    "startAt": "2026-08-18T08:00:00+06:00",
+    "endAt": "2026-08-23T20:00:00+06:00",
+    "freeTextInstruction": "Review against your original prescription before saving."
+  },
+  "scheduleSpecification": {
+    "timezone": "Asia/Dhaka",
+    "occurrences": [
+      { "localTime": "08:00", "label": "Morning" },
+      { "localTime": "20:00", "label": "Evening" }
+    ]
+  },
+  "sourceReviewDecisionId": "f32a3e0d-3ca7-4144-82a8-7ac89911dca8",
+  "effectiveFrom": "2026-08-18T08:00:00+06:00"
+}
+

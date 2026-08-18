@@ -1,0 +1,47 @@
+{
+  "documentVersion": 1,
+  "policyOutcome": "review_required",
+  "evidenceManifest": {
+    "modelReleaseId": "6ac0810d-d027-44e8-8821-aa3e1518c89b",
+    "catalogReleaseId": "ffc6b35c-c94d-4577-ac7a-90d34de5ffb8",
+    "policyReleaseId": "e0eea05e-7b81-4ee0-adb0-78559ff401e5"
+  },
+  "lines": [
+    {
+      "id": "b8fd1f92-1d9d-49b7-99fa-b6fe5fce0d14",
+      "sourceEvidence": {
+        "pageNumber": 1,
+        "text": "Napa 500 mg 1 tab BD PC 5 days",
+        "region": { "x": 0.12, "y": 0.41, "width": 0.66, "height": 0.08 }
+      },
+      "fields": {
+        "medicineName": { "rawValue": "Napa", "normalizedValue": "Napa", "validation": "valid", "calibratedConfidence": 0.91 },
+        "quantity": { "rawValue": "1", "normalizedValue": 1, "validation": "valid", "calibratedConfidence": 0.97 },
+        "unit": { "rawValue": "tab", "normalizedValue": "tablet", "validation": "valid", "calibratedConfidence": 0.98 },
+        "frequency": { "rawValue": "BD", "normalizedValue": "twice_daily", "validation": "ambiguous", "calibratedConfidence": 0.78 },
+        "duration": { "rawValue": "5 days", "normalizedValue": { "value": 5, "unit": "day" }, "validation": "valid", "calibratedConfidence": 0.95 }
+      },
+      "matchCandidates": [
+        {
+          "product": {
+            "id": "6c16e30b-f537-4c63-a12b-b58da90f8a07",
+            "displayName": "Napa 500 mg tablet",
+            "brandName": "Napa",
+            "genericDisplay": "Paracetamol",
+            "ingredients": ["Paracetamol"],
+            "strengthDisplay": "500 mg",
+            "dosageForm": "tablet",
+            "route": "oral",
+            "market": "BD",
+            "verificationStatus": "approved",
+            "catalogReleaseId": "ffc6b35c-c94d-4577-ac7a-90d34de5ffb8"
+          },
+          "rank": 1,
+          "matchPolicyOutcome": "preselected",
+          "evidence": { "calibratedLikelihood": 0.94, "scoreMargin": 0.18, "compatibility": ["name", "strength", "dosage_form", "route"] }
+        }
+      ],
+      "reviewState": "unreviewed"
+    }
+  ]
+}

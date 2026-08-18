@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@11.20.0",
   "scripts": {
     "storybook": "storybook dev --port 6006 --host 0.0.0.0",
     "build-storybook": "storybook build"

@@ -4,3 +4,6 @@ This folder is a standard, self-contained Storybook workspace inside the officia
 
 Run `pnpm install` followed by `pnpm storybook` from this directory. The canonical full documentation remains in the parent `docs/nirog/` source tree.
 
+## Netlify deployment
+
+The repository-root `netlify.toml` explicitly scopes Netlify to this directory. Netlify installs the dependencies defined here with the committed `pnpm-lock.yaml`, runs `pnpm build-storybook`, and publishes `storybook-static/`. Do not set the Netlify base directory to the repository root: that would make Netlify install the full upstream Storybook Yarn monorepo instead of this independent preview application.

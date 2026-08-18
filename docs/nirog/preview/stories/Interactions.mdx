@@ -1,0 +1,55 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const integrationFlow = `flowchart LR
+  UM[User Management]
+  MC[Medicine Catalog]
+  PM[Prescription and ML Evidence]
+  RM[Medication Regimen]
+  AO[Adherence and Notifications]
+  PX[Platform: Audit and Sync]
+  UM -->|ResolveProfileAccess query| PM
+  UM -->|ResolveProfileAccess query| RM
+  MC -->|SearchProducts query| PM
+  PM -->|CreateRegimenFromReview command| RM
+  RM -->|RegimenVersionActivated event| AO
+  RM -->|RefillRuleChanged event| AO
+  AO -->|DoseLogged event| RM
+  AO -->|RefillRecorded event| RM
+  PM -->|AuditAction event| PX
+  RM -->|Profile change event| PX
+  AO -->|Profile change event| PX`;
+
+export const reviewToRegimen = `sequenceDiagram
+  autonumber
+  participant App as Flutter App
+  participant PM as Prescription and ML Evidence
+  participant MC as Medicine Catalog
+  participant RM as Medication Regimen
+  participant AO as Adherence and Notifications
+  App->>PM: Record medication review
+  PM->>MC: Validate selected product release
+  MC-->>PM: Product identity available
+  PM->>RM: CreateRegimenFromReview
+  RM->>RM: Validate instruction and create version
+  RM->>AO: RegimenVersionActivated
+  AO-->>App: Canonical reminder specification
+  RM-->>App: Active regimen`;
+
+<Meta title="Nirog / 06 Interactions and Events" />
+
+# Interactions and Events
+
+The system uses the smallest integration style that keeps ownership clear. Low-latency authorization and catalog search use queries. A change to another subsystem’s data uses a command. A consequence that can happen asynchronously uses an outbox event.
+
+<MermaidDiagram title="Subsystem interaction contract map" chart={integrationFlow} />
+
+## Core commands
+
+`CreateScanJob` belongs to Prescription and ML Evidence. `RecordMedicationReview` belongs to the same subsystem. `CreateRegimenFromReview` belongs to Medication Regimen. `RecordDoseLog` and `RecordRefill` belong to Adherence and Notifications. `CreatePatientProfile`, `GrantProfileAccess`, and `RevokeProfileAccess` belong to User Management.
+
+## Core events
+
+`RegimenVersionActivated` and `RefillRuleChanged` let the Adherence subsystem refresh reminder behavior. `DoseLogged` and `RefillRecorded` let the Regimen subsystem update inventory projections. Every important command also emits an audit action and profile-scoped sync change through the platform subsystem.
+
+<MermaidDiagram title="Review to regimen sequence" chart={reviewToRegimen} />

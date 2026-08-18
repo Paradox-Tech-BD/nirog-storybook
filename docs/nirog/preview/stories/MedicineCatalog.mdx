@@ -1,0 +1,62 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const catalogModel = `classDiagram
+  class CatalogRelease {
+    +UUID id
+    +CatalogReleaseStatus status
+    +JSON sourceManifest
+    +publish()
+    +rollback()
+  }
+  class MedicineProduct {
+    +UUID id
+    +String brandName
+    +String strengthDisplay
+    +String dosageForm
+    +String route
+    +ProductStatus status
+    +search()
+  }
+  class GenericIngredient {
+    +UUID id
+    +String normalizedName
+    +String codingSystem
+  }
+  class ProductIngredient {
+    +UUID productId
+    +UUID ingredientId
+    +Decimal strengthValue
+    +String strengthUnit
+  }
+  class Manufacturer {
+    +UUID id
+    +String name
+  }
+  class ProductAlias {
+    +UUID id
+    +UUID productId
+    +String alias
+    +AliasType aliasType
+  }
+  CatalogRelease "1" --> "0..*" MedicineProduct : publishes
+  MedicineProduct "1" --> "0..*" ProductIngredient : contains
+  GenericIngredient "1" --> "0..*" ProductIngredient : identifies
+  Manufacturer "1" --> "0..*" MedicineProduct : makes
+  MedicineProduct "1" --> "0..*" ProductAlias : recognizes`;
+
+<Meta title="Nirog / 03 Medicine Catalog" />
+
+# Medicine Catalog
+
+The catalog is shared reference data. It stores released medicine identity, not a patient’s personal schedule, stock count, or adherence. The patient-selectable record is **MedicineProduct**, linked to generic ingredients, manufacturer, dosage form, aliases, and source release.
+
+<MermaidDiagram title="Medicine catalog class model" chart={catalogModel} />
+
+## Release rule
+
+Every product fact is attached to a `CatalogRelease` with source provenance. OCR matching also references a `MatchIndexRelease`, so the same prescription can be explained against the exact catalog and embedding index that were active when it was processed.
+
+## What other subsystems receive
+
+Prescription and ML Evidence sends normalized extracted text to the catalog search contract and receives ranked candidates. Medication Regimen stores a `medicine_product_id` as an identity reference but never mutates catalog product facts.

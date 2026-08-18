@@ -1,0 +1,43 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const apiFlow = `sequenceDiagram
+  participant App as Flutter App
+  participant API as FastAPI API
+  participant PM as Prescription and ML Evidence
+  participant RM as Medication Regimen
+  participant Sync as Change Feed
+  App->>API: Authenticated profile-scoped request
+  API->>API: Resolve effective profile access
+  alt Mutation request
+    API->>API: Enforce Idempotency-Key
+    API->>PM: Create scan or record review
+    API->>RM: Create/update regimen when confirmed
+    API->>Sync: Append profile change event
+  else Read request
+    API-->>App: Minimal authorized resource representation
+  end`;
+
+<Meta title="Nirog / 08 API Contract" />
+
+# API Contract
+
+The API is JSON over HTTPS with bearer authentication, profile-scoped server-side authorization, UUID or ULID resource identifiers, and RFC 9457-style problem responses. Every mutation requires an `Idempotency-Key`. The API must not trust a client-supplied user ID to determine profile ownership.
+
+<MermaidDiagram title="API request and mutation flow" chart={apiFlow} />
+
+## Profile and document routes
+
+`GET /v1/profiles` lists the profiles visible to the current user. `POST /v1/profiles/{profileId}/prescription-documents` creates a document and short-lived page upload capabilities. `POST /v1/prescription-documents/{documentId}/scan-jobs` queues asynchronous ML processing. `GET /v1/scan-jobs/{scanJobId}` returns progress and the review payload.
+
+## Review, catalog, and regimen routes
+
+`POST /v1/scan-jobs/{scanJobId}/review-decisions` records the user’s evidence-based decision. `GET /v1/medicine-catalog/search` searches the current approved catalog. `GET /v1/profiles/{profileId}/regimen-items` returns visible medication courses. `POST /v1/regimen-items/{regimenItemId}/versions` creates a versioned instruction change.
+
+## Adherence and sync routes
+
+`POST /v1/profiles/{profileId}/dose-events` appends a reported medication event. `POST /v1/sync/commands` accepts an offline device command batch. `GET /v1/sync/changes?cursor=` returns ordered profile-scoped deltas. A duplicate `client_event_id` returns the original resolution instead of creating another dose log.
+
+## Canonical OpenAPI source
+
+The machine-readable contract is maintained in [`docs/nirog/api/openapi.yaml`](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/api/openapi.yaml).

@@ -1,0 +1,35 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const ownershipER = `erDiagram
+  USERS ||--o{ PATIENT_PROFILES : owns
+  USERS ||--o{ PROFILE_ACCESS : receives
+  PATIENT_PROFILES ||--o{ PROFILE_ACCESS : shares
+  PATIENT_PROFILES ||--o{ PRESCRIPTION_DOCUMENTS : contains
+  PRESCRIPTION_DOCUMENTS ||--o{ OCR_SCANS : creates
+  OCR_SCANS ||--o{ MEDICATION_REVIEWS : produces
+  MEDICATION_REVIEWS ||--o| MEDICATION_REGIMENS : activates
+  MEDICINE_PRODUCTS ||--o{ MEDICATION_REGIMENS : identifies
+  MEDICATION_REGIMENS ||--o{ REGIMEN_VERSIONS : versions
+  REGIMEN_VERSIONS ||--o{ SCHEDULE_RULES : defines
+  REGIMEN_VERSIONS ||--o{ DOSE_LOGS : tracks
+  MEDICATION_REGIMENS ||--o{ REFILL_HISTORY : records
+  MEDICATION_REGIMENS ||--o| REFILL_ALERTS : monitors
+  MEDICINE_PRODUCTS ||--o{ PRODUCT_INGREDIENTS : contains
+  GENERIC_INGREDIENTS ||--o{ PRODUCT_INGREDIENTS : identifies`;
+
+<Meta title="Nirog / 07 Schema Ownership" />
+
+# Schema Ownership
+
+The ER diagram shows the cross-subsystem relationship IDs. Ownership is still explicit: the table that stores a relationship is written only by its owning module.
+
+<MermaidDiagram title="Nirog schema ownership ER diagram" chart={ownershipER} />
+
+## Database schemas
+
+**identity** owns users, providers, preferences, devices, profiles, teams, invitations, access grants, and consent. **catalog** owns sources, releases, products, ingredients, aliases, and match indexes. **prescription** owns assets, documents, pages, scans, OCR output, extraction fields, candidates, and reviews. **regimen** owns private medication courses, instruction versions, schedule rules, planned doses, inventory, and refill rules. **adherence** owns reminder delivery, notifications, dose logs, refill history, alerts, and adherence projections. **platform** owns idempotent commands, change events, audits, provenance, purge jobs, and outbox events.
+
+## Data visibility
+
+Catalog products are shared reference data. Regimens, source images, OCR text, dose logs, and notifications are profile-private health data. A consumer never receives an object-storage permanent URL, raw auth credential, or data belonging to a profile outside its effective access grant.

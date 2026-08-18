@@ -24,4 +24,3 @@ Add PaddleOCR and ONNX Runtime only to the ML worker image/profile. This prevent
 ## Definition of ready to implement
 
 Start coding only when the local compose environment, migration test, RLS test fixture, problem-details mapper, OpenAPI export/lint job, container build, and CI protection rules are in place. This prevents the first endpoint from becoming a precedent that bypasses authorization, transactions, audit, or contract governance.
-

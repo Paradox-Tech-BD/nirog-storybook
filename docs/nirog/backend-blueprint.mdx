@@ -712,7 +712,266 @@ backend/
 | Audit and deletion | Protected actions are auditable and a deletion request is traceable through an end-state purge job. |
 | Release safety | Model/catalog/policy updates reference an evaluation run and can be rolled back. |
 
-## 16. References
+## 16. Merged application class model
+
+The following model merges the original Nirog application classes into the backend blueprint. It preserves the original user-facing concepts while introducing the three backend distinctions required by the prescription workflow:
+
+1. **`MedicineProduct` versus `MedicationRegimen`:** a catalog product is shared reference data, while a regimen is a profile-specific medication course.
+2. **`PrescriptionDocument`, `OCRScan`, and `MedicationReview`:** the original image, the ML processing run, and the user decision are different records with different lifecycles.
+3. **`RegimenVersion`:** medication-critical changes create a new instruction version instead of editing historical dose records.
+
+> For a dedicated, copy-ready version of this diagram and the related ML/catalog class model, use [Application Class Model](./schemas/application-class-model.mdx).
+
+```mermaid
+classDiagram
+    class User {
+        +UUID id
+        +String email
+        +String passwordHash
+        +String name
+        +String avatarUrl
+        +Date dob
+        +UserRole role
+        +UserStatus status
+        +DateTime createdAt
+        +register()
+        +login()
+        +resetPassword()
+        +deleteAccount()
+        +updateProfile()
+    }
+
+    class UserPreferences {
+        +UUID id
+        +String theme
+        +String language
+        +String timezone
+        +Int snoozeDurationMinutes
+        +Boolean digestEnabled
+        +Boolean notificationsEnabled
+        +update()
+    }
+
+    class UserProfile {
+        +UUID id
+        +UUID ownerUserId
+        +String name
+        +String relationship
+        +Boolean isDefault
+        +ProfileStatus status
+        +switchTo()
+        +update()
+    }
+
+    class ProfileAccess {
+        +UUID id
+        +UUID profileId
+        +UUID userId
+        +ProfileRole role
+        +JSON permissions
+        +DateTime grantedAt
+        +DateTime revokedAt
+        +grant()
+        +revoke()
+    }
+
+    class PrescriptionDocument {
+        +UUID id
+        +UUID profileId
+        +DocumentStatus status
+        +Int documentVersion
+        +submitPages()
+        +delete()
+    }
+
+    class OCRScan {
+        +UUID id
+        +UUID documentId
+        +ScanStatus status
+        +String currentStage
+        +String modelReleaseId
+        +String policyReleaseId
+        +DateTime scannedAt
+        +enqueue()
+        +extractFields()
+        +getProgress()
+        +retry()
+    }
+
+    class MedicationReview {
+        +UUID id
+        +UUID scanId
+        +UUID profileId
+        +ReviewDecision decision
+        +UUID selectedProductId
+        +JSON editedInstruction
+        +String evidenceVersion
+        +DateTime reviewedAt
+        +acceptMatch()
+        +saveUnresolved()
+        +reject()
+    }
+
+    class MedicineProduct {
+        +UUID id
+        +String brandName
+        +String genericDisplay
+        +String strengthDisplay
+        +String dosageForm
+        +String route
+        +String manufacturerName
+        +ProductStatus status
+        +UUID catalogReleaseId
+        +search()
+        +getDetails()
+    }
+
+    class MedicationRegimen {
+        +UUID id
+        +UUID profileId
+        +UUID medicineProductId
+        +UUID unresolvedMedicationId
+        +RegimenStatus status
+        +Int currentVersion
+        +addMedicine()
+        +editMedicine()
+        +pause()
+        +resume()
+        +end()
+    }
+
+    class RegimenVersion {
+        +UUID id
+        +UUID regimenId
+        +Int versionNumber
+        +JSON dosageInstruction
+        +DateTime startDate
+        +DateTime endDate
+        +String changeReason
+        +createVersion()
+        +activate()
+    }
+
+    class Reminder {
+        +UUID id
+        +UUID regimenVersionId
+        +ScheduleType scheduleType
+        +JSON timingRule
+        +Boolean isEnabled
+        +Int snoozeMinutes
+        +DateTime nextTrigger
+        +generate()
+        +enable()
+        +disable()
+        +snooze()
+    }
+
+    class DoseLog {
+        +UUID id
+        +UUID regimenVersionId
+        +UUID plannedDoseId
+        +DateTime scheduledTime
+        +DateTime actualTime
+        +DoseStatus status
+        +DoseReporter reporterType
+        +Boolean isRetroactive
+        +String clientEventId
+        +logDose()
+        +editLog()
+    }
+
+    class RefillAlert {
+        +UUID id
+        +UUID regimenId
+        +Decimal thresholdQuantity
+        +String baseUnit
+        +DateTime alertSentAt
+        +Boolean isAcknowledged
+        +checkThreshold()
+        +sendAlert()
+        +acknowledge()
+    }
+
+    class RefillHistory {
+        +UUID id
+        +UUID regimenId
+        +DateTime refillDate
+        +Decimal quantityAdded
+        +Decimal stockBefore
+        +Decimal stockAfter
+        +String baseUnit
+        +record()
+    }
+
+    class Notification {
+        +UUID id
+        +UUID reminderId
+        +NotificationType type
+        +String title
+        +String body
+        +DateTime scheduledAt
+        +DateTime sentAt
+        +Boolean acknowledged
+        +send()
+        +acknowledge()
+    }
+
+    class AdherenceStats {
+        +UUID id
+        +UUID profileId
+        +Date periodStart
+        +Date periodEnd
+        +Float dailyPercentage
+        +Float weeklyPercentage
+        +Float monthlyPercentage
+        +Int takenCount
+        +Int missedCount
+        +Int skippedCount
+        +calculate()
+    }
+
+    User "1" --> "1" UserPreferences : has
+    User "1" --> "1..*" UserProfile : owns
+    User "1" --> "0..*" ProfileAccess : receives
+    UserProfile "1" --> "0..*" ProfileAccess : shares
+    UserProfile "1" --> "0..*" PrescriptionDocument : contains
+    PrescriptionDocument "1" --> "0..*" OCRScan : processes
+    OCRScan "1" --> "0..*" MedicationReview : produces review options
+    UserProfile "1" --> "0..*" MedicationReview : confirms
+    MedicationReview "0..1" --> "1" MedicationRegimen : creates
+    UserProfile "1" --> "0..*" MedicationRegimen : manages
+    MedicineProduct "1" --> "0..*" MedicationRegimen : identifies
+    MedicationRegimen "1" --> "1..*" RegimenVersion : versions
+    RegimenVersion "1" --> "0..*" Reminder : schedules
+    RegimenVersion "1" --> "0..*" DoseLog : tracks
+    MedicationRegimen "1" --> "0..1" RefillAlert : monitors
+    MedicationRegimen "1" --> "0..*" RefillHistory : logs
+    Reminder "1" --> "0..*" Notification : triggers
+    RefillAlert "1" --> "0..*" Notification : triggers
+    DoseLog "1" --> "0..*" Notification : triggers
+    UserProfile "1" --> "0..*" AdherenceStats : generates
+```
+
+### 16.1 Class merge notes
+
+| Original concept | Merged backend concept | Purpose |
+|---|---|---|
+| `User` and `UserPreferences` | Retained unchanged in responsibility. | Account identity and personal UI/notification choices remain account-level records. |
+| `UserProfile` | `UserProfile` plus `ProfileAccess`. | A profile is a patient/dependent context; profile access makes caregiver sharing explicit and revocable. |
+| `Medicine` | `MedicineProduct`, `MedicationRegimen`, and `RegimenVersion`. | Separates catalog facts from a personal course and its medication-instruction history. |
+| `OCRScan` | `PrescriptionDocument`, `OCRScan`, and `MedicationReview`. | Separates original source evidence, ML work, and the user’s accepted interpretation. |
+| `Reminder`, `DoseLog`, `RefillAlert`, `RefillHistory`, `Notification`, `AdherenceStats` | Retained with profile/regimen/version references. | Keeps the original adherence loop while making it safe for edits, offline sync, and multi-profile operation. |
+
+### 16.2 Implementation rules for this model
+
+1. `MedicineProduct` is shared catalog data, while `MedicationRegimen` is profile-private. A shared product record must never contain user stock, start date, dose logs, or reminder preferences.
+2. `MedicationRegimen` uses exactly one medication reference: either `medicineProductId` or `unresolvedMedicationId`. The latter supports a profile-private manual entry until it can be resolved.
+3. Editing a medication-critical instruction creates a `RegimenVersion`; existing `DoseLog` records stay attached to the original historical version.
+4. `DoseLog` distinguishes user-reported `taken`/`skipped` from system-inferred `missed`. A `Notification` records a reminder event and does not prove that medication was consumed.
+5. `OCRScan` does not create a regimen alone. A `MedicationReview` stores the user’s decision and is the source link for a new regimen.
+6. `RefillAlert` and `RefillHistory` operate on product-specific base units such as tablet, capsule, millilitre, puff, or unit; an unqualified `stockCount` is not sufficient.
+
+## 17. References
 
 [1] [HL7 FHIR, *MedicationRequest*](https://hl7.org/fhir/medicationrequest.html)
 

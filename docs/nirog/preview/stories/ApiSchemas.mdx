@@ -1,0 +1,90 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const apiSchemaMap = `classDiagram
+  class PrescriptionDocumentUpload {
+    +UUID documentId
+    +UploadStatus status
+    +PageUpload[] pageUploads
+  }
+  class ScanJob {
+    +UUID id
+    +UUID documentId
+    +ScanStatus status
+    +Progress progress
+    +ScanReviewPayload reviewPayload
+  }
+  class ScanReviewPayload {
+    +Int documentVersion
+    +PolicyOutcome policyOutcome
+    +ExtractedMedicationLine[] lines
+    +EvidenceManifest evidenceManifest
+  }
+  class ExtractedMedicationLine {
+    +UUID id
+    +SourceEvidence sourceEvidence
+    +FieldCandidates fields
+    +MatchCandidate[] matchCandidates
+    +ReviewState reviewState
+  }
+  class LineReviewDecisionInput {
+    +UUID lineId
+    +ReviewDecision decision
+    +UUID evidenceVersion
+    +UUID selectedProductId
+    +DosageInstruction editedDosageInstruction
+    +Boolean activateRegimen
+  }
+  class RegimenItem {
+    +UUID id
+    +UUID profileId
+    +Int version
+    +RegimenStatus status
+    +MedicationReference medicationReference
+    +DosageInstruction dosageInstruction
+    +ScheduleSpecification scheduleSpecification
+  }
+  class DoseEventInput {
+    +UUID regimenItemId
+    +UUID plannedOccurrenceId
+    +DoseEventType eventType
+    +DateTime occurredAt
+  }
+  class OfflineCommand {
+    +UUID clientEventId
+    +UUID profileId
+    +CommandType type
+    +Int baseVersion
+    +JSON payload
+  }
+  PrescriptionDocumentUpload --> ScanJob : creates after upload
+  ScanJob --> ScanReviewPayload : materializes
+  ScanReviewPayload --> ExtractedMedicationLine : contains
+  ExtractedMedicationLine --> LineReviewDecisionInput : reviewed with
+  LineReviewDecisionInput --> RegimenItem : may activate
+  RegimenItem --> DoseEventInput : accepts event for
+  OfflineCommand --> DoseEventInput : may replay`;
+
+<Meta title="Nirog / 12 API Schema Reference" />
+
+# API Schema Reference
+
+The API contract is OpenAPI 3.1, bearer-authenticated, profile-scoped, and designed for Flutter’s online and offline workflows. Every mutation uses an `Idempotency-Key`; medication-critical version changes also include a base-version precondition.
+
+<MermaidDiagram title="API resource and schema map" chart={apiSchemaMap} />
+
+## Prescription and review payloads
+
+`PrescriptionDocumentUpload` returns a server document ID and short-lived per-page upload capabilities. `ScanJob` carries progress through `ingest`, `preprocess`, `recognize`, `organize`, `extract`, `match`, and `policy`. Its optional `ScanReviewPayload` is a review surface that preserves raw source text regions, field candidates, matched product alternatives, and the release manifest used to produce them.
+
+`LineReviewDecisionInput` accepts a product match, a private unresolved medication, a rejection, or edited dosage instructions. The response reports whether the decision was saved as a draft, activated a regimen, was blocked by policy, or was rejected. The client must never infer activation from OCR status alone.
+
+## Regimen, dose, and sync payloads
+
+`RegimenItem` contains the profile identifier, current version, status, product-or-unresolved reference, dosage instruction, schedule specification, and optional source review decision. `DoseEventInput` is append-only and distinguishes user-reported events from system inference. `OfflineCommand` uses a device-generated client event ID, type, version precondition, occurrence time, and payload; the server returns accepted, already-applied, rejected, or conflict outcomes.
+
+## Important API guards
+
+Document creation validates page type, size, and SHA-256 before issuing upload capability. Product search always returns its `catalogReleaseId`. Review submission checks the document/evidence version. Regimen edits require a base version. Sync commands are deduplicated by client event ID, and change feeds are ordered and policy-filtered by profile scope.
+
+The full machine-readable contract is [`docs/nirog/api/openapi.yaml`](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/next/docs/nirog/api/openapi.yaml).

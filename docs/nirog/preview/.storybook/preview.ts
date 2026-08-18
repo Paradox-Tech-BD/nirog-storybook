@@ -6,6 +6,7 @@ const preview: Preview = {
     options: {
       storySort: {
         order: ['Nirog'],
+        method: 'alphabetical',
       },
     },
   },

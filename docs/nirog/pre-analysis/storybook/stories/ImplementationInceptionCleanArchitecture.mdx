@@ -1,0 +1,70 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const cleanLayers = `flowchart LR
+  Flutter[Flutter] --> HTTP[Presentation\nFastify + TypeBox]
+  HTTP --> App[Application\nUserApplicationService + port]
+  App --> Domain[Domain\nports + commands]
+  App --> Access[Authorization\nRBAC evaluator + PBAC seam]
+  Compose[Composition root] --> HTTP
+  Compose --> App
+  Compose --> Clerk[Clerk infrastructure adapter]
+  Compose --> Drizzle[Drizzle request-scope adapter]
+  Clerk --> ClerkCloud[Clerk]
+  Drizzle --> Postgres[PostgreSQL + RLS]`;
+
+export const contractFlow = `flowchart LR
+  Schema[TypeBox route schema] --> Swagger[@fastify/swagger]
+  Swagger --> Json[/openapi.json]
+  Json --> Scalar[/reference\nScalar]
+  Swagger --> Export[pnpm openapi:write]
+  Export --> Snapshot[openapi/nirog-core.openapi.json]`;
+
+export const migrationFlow = `sequenceDiagram
+  participant Dev as Developer
+  participant Schema as Drizzle schema
+  participant Kit as drizzle-kit
+  participant SQL as packages/db/drizzle
+  participant Migrator as apps/migrator
+  participant PG as PostgreSQL
+  Dev->>Schema: Intentional schema change
+  Dev->>Kit: pnpm db:generate -- --name change_name
+  Kit->>SQL: Numbered migration + journal
+  Dev->>SQL: Review DDL and native RLS/security SQL
+  Dev->>Migrator: pnpm db:migrate
+  Migrator->>PG: Apply committed migration directory`;
+
+<Meta title="Nirog / 08 Implementation Inception / 07 Clean Architecture and Artifacts / 87 Clean Architecture, Scalar, and Drizzle" />
+
+# Clean Architecture, Scalar, and Drizzle
+
+Nirog Core uses a **feature-first modular monolith with Clean Architecture dependency direction**. Fastify, Clerk, Drizzle, and PostgreSQL are external adapters. Application use cases depend only on domain contracts and policy abstractions. A composition root is the sole location that wires concrete adapters together.
+
+<MermaidDiagram title="Nirog Core Clean Architecture layers" chart={cleanLayers} />
+
+## The user feature is not route-to-database code
+
+`features/user/application/user-application-service.ts` contains the use cases and defines the `UserRequestScope` port. It has no Fastify, Clerk, Drizzle, or PostgreSQL dependency. `infrastructure/persistence/drizzle-user-request-scope.ts` implements the application port, opens the transaction, sets RLS scope, and supplies the Drizzle repository and event writer. The Fastify route is a presentation adapter, and `composition/build-server.ts` joins those layers.
+
+## Yes: Scalar is live
+
+Nirog uses TypeBox route schemas, `@fastify/swagger`, and **`@scalar/fastify-api-reference`**. The live generated OpenAPI JSON is available at `/openapi.json`; Scalar renders that same contract at `/reference`. `pnpm openapi:write` commits the generated snapshot in `openapi/nirog-core.openapi.json`.
+
+<MermaidDiagram title="Single-source API contract flow" chart={contractFlow} />
+
+## Visible Drizzle migrations
+
+The versioned migration directory is **`packages/db/drizzle/`**. It currently contains `0000_foundation.sql`, `0001_clerk_user_subsystem.sql`, and `meta/_journal.json`. Drizzle schema source is in `packages/db/src/schema/*.ts`; `drizzle.config.ts` explicitly points `out` to the migration directory; `apps/migrator/src/main.ts` applies that same directory with Drizzle’s PostgreSQL migrator.
+
+New relational DDL is generated with:
+
+```bash
+pnpm db:generate -- --name add_prescription_tables
+pnpm db:migrate
+```
+
+The existing baseline migrations use explicit, reviewed SQL because they include PostgreSQL-native multi-schema setup, RLS policies, role grants, and a security-definer function. That SQL is visible and versioned inside the Drizzle migration artifacts—never an untracked database-console action.
+
+<MermaidDiagram title="Drizzle generation and migration application" chart={migrationFlow} />
+
+Read the full [Clean Architecture and development-artifacts guide](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/09-clean-architecture-and-development-artifacts.md).

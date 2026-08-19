@@ -120,6 +120,24 @@ The verified implementation now uses a feature-first Clean Architecture layout. 
 
 The user feature is now divided into command, query, authorization, error, port, contract, mapper, route, and registration modules. The platform now has common TypeBox success/problem schemas, response helpers, a central error/not-found mapper, `X-Correlation-Id`, global API route composition, public-route classification, generated `/openapi.json`, live Scalar `/reference/`, and feature tags. Successful business responses use `{ data, meta: { correlationId } }`; failures use `application/problem+json`. `@fastify/rate-limit` enforces limits after Clerk authentication using local account IDs; anonymous requests use client IPs. Valkey is part of Compose, a shared Redis-compatible rate-limit store is mandatory in production, and the environment template exposes the rate controls. Backend `pnpm verify` passed with 12 tests across 5 files; the Node 22 Storybook build completed successfully. Docker runtime validation remains pending because the sandbox has no Docker daemon.
 
+## Temporary sandbox API exposure
+
+- [x] Start the verified Core API with sandbox-safe local settings, expose its temporary public URL, and verify `/health/live`, `/api/v1/health/live`, `/reference/`, and `/openapi.json` from that URL.
+
+The temporary sandbox API runs with no Clerk credentials and no live PostgreSQL/Valkey service. Public health, OpenAPI, and Scalar routes are available for review; protected business endpoints intentionally return authentication-unavailable responses rather than accepting an unverified token. During live reference verification, API-prefixed health aliases were added so Scalar’s `/api/v1` server declaration sends requests to a real documented health route while root health probes remain available and hidden from the public API contract.
+
+## Credential-enabled sandbox verification
+
+- [ ] Restart the temporary API using user-supplied Clerk credentials held only in the active sandbox process, then verify a real Clerk bearer token against a protected user endpoint without persisting secrets.
+
+## Nirog Next.js web companion
+
+- [x] Create a separate private Next.js repository with a responsive, phone-complementary Nirog user interface.
+- [x] Implement Clerk browser authentication, a protected Core API client, and Clerk-session bearer propagation without exposing Core credentials to the browser.
+- [x] Build the initial authenticated dashboard/profile experience around the implemented Core user APIs; document local environment and deployment configuration without storing private Clerk credentials.
+
+The private `Paradox-Tech-BD/nirog-web` repository now contains the Next.js 16 App Router web companion. The signed-out Clinical Ledger landing view and signed-in care workspace use Clerk Core 3 provider/proxy boundaries; a same-origin `GET /api/core/me` handler obtains the Clerk token server-side and forwards it to Nirog Core. The first dashboard presents actual Core projection state or a typed connection problem—it never fabricates medication or clinical records. The repository includes an untracked `.env.local` template, a public-key-only browser setting, server-only Clerk configuration, `NIROG_CORE_API_URL`, optional Core JWT-template configuration, a deliberate responsive design direction, and browser preview evidence. `pnpm lint` and the Next.js production build passed before commit `3b471a3` was published to the private repository.
+
 The selected baseline is Python 3.13 with FastAPI and Pydantic v2; PostgreSQL 18 with SQLAlchemy 2, `asyncpg`, Alembic, and RLS; Celery 5.6 with managed Valkey transport and PostgreSQL-based outbox/consumer ledger; private S3/KMS evidence storage; OpenTelemetry and redacted structured telemetry; a validated OpenAPI-to-Flutter contract; Docker/OpenTofu/GitHub Actions; and an AWS ECS Fargate production profile. Storybook MDX/Mermaid remains the human architecture hub, while FastAPI OpenAPI plus Redocly becomes the executable API documentation and governance layer.
 
 The stack must preserve a modular FastAPI/Python monolith with explicit application/domain/port/infrastructure layers, strict Pydantic transport models and immutable command types, PostgreSQL as the canonical authority with transaction-scoped RLS defense in depth, private object storage for evidence, a Redis-compatible broker/cache, separately scaled worker pools, OIDC/OAuth2 actor resolution, current profile capability evaluation, RBAC with a future policy evaluator seam, Flutter-safe OpenAPI/change-feed contracts, transactional outbox/idempotency, and redacted end-to-end observability.

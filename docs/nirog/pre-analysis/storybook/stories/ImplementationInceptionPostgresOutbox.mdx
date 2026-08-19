@@ -1,0 +1,35 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const outboxFlow = `flowchart LR
+  Client[Flutter or Nirog Web] --> API[Railway Core API]
+  API -->|One DB transaction| PG[(Railway PostgreSQL\nclinical state + audit + outbox)]
+  PG -->|FOR UPDATE SKIP LOCKED\nlease claim| Dispatcher[Railway Dispatcher]
+  Dispatcher -->|Registered handler only| Domain[Future ML / domain handler]
+  Domain -->|Private evidence only| R2[(Cloudflare R2)]
+  Dispatcher -->|success / retry / dead letter| PG`;
+
+<Meta title="Nirog / 08 Implementation Inception / 09 Railway PostgreSQL Outbox / 89 AWS-Free Worker Deployment" />
+
+# Railway PostgreSQL Outbox: AWS-Free Worker Deployment
+
+Nirog does **not** require AWS, SQS, LocalStack, IAM keys, or an external queue. PostgreSQL is the durable queue through `platform.outbox_events`; Cloudflare R2 stores private evidence objects; Railway runs the API and a separate dispatcher service.
+
+<MermaidDiagram title="Railway API, PostgreSQL dispatcher, and R2 boundary" chart={outboxFlow} />
+
+## Service split
+
+| Railway service | Core behavior |
+|---|---|
+| API | Writes clinical state, audit evidence, and outbox rows atomically. `OUTBOX_WORKER_ENABLED=false`. |
+| Dispatcher | Claims eligible outbox rows with PostgreSQL leases. `OUTBOX_WORKER_ENABLED=true`. |
+| PostgreSQL | Holds durable state and retry/dead-letter fields. |
+| Cloudflare R2 | Holds private evidence bytes, never queue messages. |
+
+The dispatcher claims only event types that have an explicit handler. This safe default prevents unknown clinical events from being treated as successfully delivered.
+
+## Runtime controls
+
+The worker uses `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_BATCH_SIZE`, `OUTBOX_LEASE_SECONDS`, `OUTBOX_RETRY_DELAY_SECONDS`, and `OUTBOX_MAX_ATTEMPTS`. A handler success sets `published_at`; a transient failure schedules a next attempt; an exhausted event records `dead_lettered_at` and a safe failure code.
+
+The full [Railway PostgreSQL Outbox and Cloudflare R2 guide](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/12-railway-postgresql-outbox-deployment.md) includes the required Railway variables and startup commands.

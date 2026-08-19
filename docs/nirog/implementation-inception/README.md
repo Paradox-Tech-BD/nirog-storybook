@@ -32,7 +32,7 @@ This library turns the approved Nirog architecture into an executable starting p
 | 10 | [09 — Clean Architecture and Development Artifacts](09-clean-architecture-and-development-artifacts.md) | Reviewing the executable layer boundaries, Scalar/API contract endpoints, and Drizzle migration workflow. |
 | 11 | [10 — Feature-Sliced HTTP Platform](10-feature-sliced-http-platform.md) | Reviewing focused user modules, common response/error semantics, generated Scalar/OpenAPI, and user-aware rate limits. |
 | 12 | [11 — Cloudflare R2 Evidence Storage](11-cloudflare-r2-evidence-storage.md) | Configuring private evidence objects through R2 while preserving the separate SQS worker transport. |
-| 13 | [12 — Railway and AWS SQS Deployment](12-railway-aws-sqs-deployment.md) | Creating SQS queues, least-privilege IAM identities, and sealed Railway service variables. |
+| 13 | [12 — Railway PostgreSQL Outbox Deployment](12-railway-postgresql-outbox-deployment.md) | Deploying Core API and dispatcher services on Railway with PostgreSQL leases, retries, and Cloudflare R2 evidence storage. |
 
 The [research notes](research-notes.md) preserve the evidence behind the technology and Strapi decision.
 

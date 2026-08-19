@@ -5,10 +5,10 @@ export const topology = `flowchart LR
   Flutter[Flutter] --> Core[Nirog Core\nNode 24 + Fastify + TypeBox + Drizzle]
   Workforce[Workforce editor] --> Strapi[Bounded Strapi admin]
   Core --> PG[(Clinical PostgreSQL + RLS)]
-  Core --> S3[Private evidence storage]
+  Core --> R2[Private Cloudflare R2 evidence storage]
   Core --> Outbox[Transactional outbox]
-  Outbox --> SQS[SQS + DLQ]
-  SQS --> Worker[Python ML/RAG worker]
+  Outbox --> Dispatcher[Railway PostgreSQL dispatcher]
+  Dispatcher --> Worker[Python ML/RAG worker]
   Worker --> Internal[Restricted Core command]
   Internal --> Core
   Strapi --> Handoff[Signed catalog handoff]
@@ -30,6 +30,6 @@ Nirog adopts a **bounded Strapi topology**. The clinical system of record is **N
 
 **No shared clinical database.** Strapi cannot read or write patient records. A reviewed catalog release crosses the boundary as a signed, versioned handoff command; Core validates it and writes an immutable catalog release itself.
 
-**Python remains a worker runtime.** OCR, embedding, and retrieval workers consume minimum-necessary queue envelopes, then return evidence or retrieval results through restricted Core commands. They cannot activate a regimen or create adherence state.
+**Python remains a worker runtime.** OCR, embedding, and retrieval workers receive only minimum-necessary event envelopes through explicitly registered PostgreSQL outbox handlers, then return evidence or retrieval results through restricted Core commands. They cannot activate a regimen or create adherence state.
 
 Read the full [Platform Decision and Boundaries](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/00-platform-decision-and-boundaries.md).

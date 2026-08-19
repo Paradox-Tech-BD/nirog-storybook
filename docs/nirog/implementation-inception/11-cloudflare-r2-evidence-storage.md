@@ -19,7 +19,7 @@ sequenceDiagram
     participant Core as Nirog Core
     participant DB as PostgreSQL / RLS
     participant R2 as Private Cloudflare R2 bucket
-    participant Queue as SQS / LocalStack queue
+    participant Dispatcher as Railway PostgreSQL dispatcher
     participant Worker as ML worker
 
     Client->>Core: Request evidence-upload intent
@@ -30,24 +30,24 @@ sequenceDiagram
     Client->>R2: PUT bytes with signed content type
     Client->>Core: Confirm upload metadata
     Core->>DB: Persist object key, size, hash, scope, audit event, outbox record
-    Core->>Queue: Publish committed work event
-    Queue->>Worker: Deliver event
+    Dispatcher->>DB: Claim committed outbox event with lease
+    Dispatcher->>Worker: Invoke registered event handler
     Worker->>Core: Request authorized evidence access intent
     Core->>R2: Sign bounded read URL or retrieve server-side
 ```
 
-This keeps asynchronous delivery separate from evidence storage. **SQS remains the event transport**. In local Docker development, LocalStack emulates SQS queues only; it no longer creates a local S3 evidence bucket. Production SQS settings are independent of the R2 endpoint and credentials.
+This keeps asynchronous delivery separate from evidence storage. **PostgreSQL `platform.outbox_events` is the durable event transport**, and a separate Railway dispatcher claims eligible rows with a lease. Local development needs no LocalStack or external queue. R2 configuration remains independent of the outbox-worker controls.
 
 ## Implemented configuration contract
 
-The backend configuration now separates `EVENT_*` variables for SQS-compatible queue transport from `EVIDENCE_R2_*` variables for object storage.
+The backend configuration now separates `OUTBOX_*` PostgreSQL worker controls from `EVIDENCE_R2_*` object-storage configuration.
 
 | Variable | Purpose | Local Compose value | Production value |
 |---|---|---|---|
-| `EVENT_AWS_REGION` | Region for SQS client | `us-east-1` | Region of the real SQS queue, such as `us-east-1` |
-| `EVENT_AWS_ENDPOINT_URL` | LocalStack SQS endpoint override | `http://localstack:4566` | Unset |
-| `SQS_EVENT_QUEUE_URL` | Committed outbox-event queue | LocalStack path URL | Actual AWS SQS queue URL |
-| `SQS_EVENT_DLQ_URL` | Event dead-letter queue | LocalStack path URL | Actual AWS SQS DLQ URL |
+| `OUTBOX_WORKER_ENABLED` | Enables dispatcher claim loop | `false` on API, `true` in Compose dispatcher | `false` on API; `true` on Railway dispatcher service |
+| `OUTBOX_POLL_INTERVAL_MS` | Dispatcher polling delay | `1000` | Usually `1000` |
+| `OUTBOX_BATCH_SIZE` | Maximum claimed handler-compatible events | `20` | Tune from `20` after handler measurement |
+| `OUTBOX_MAX_ATTEMPTS` | Retry bound before PostgreSQL dead-letter state | `12` | `12` unless an event class has an approved override |
 | `EVIDENCE_STORAGE_DRIVER` | Evidence-store mode | `disabled` | `r2` |
 | `EVIDENCE_R2_ENDPOINT` | R2 S3 API endpoint | Unset while disabled | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
 | `EVIDENCE_R2_REGION` | S3 client region | `auto` | `auto` |
@@ -74,11 +74,13 @@ EVIDENCE_R2_ACCESS_KEY_ID=<bucket-scoped-access-key-id>
 EVIDENCE_R2_SECRET_ACCESS_KEY=<bucket-scoped-secret-access-key>
 EVIDENCE_PRESIGN_MAX_SECONDS=300
 
-# Production event transport remains separate
-EVENT_AWS_REGION=us-east-1
-EVENT_AWS_ENDPOINT_URL=
-SQS_EVENT_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/<AWS_ACCOUNT_ID>/nirog-events
-SQS_EVENT_DLQ_URL=https://sqs.us-east-1.amazonaws.com/<AWS_ACCOUNT_ID>/nirog-events-dlq
+# Production asynchronous transport remains separate
+OUTBOX_WORKER_ENABLED=true
+OUTBOX_POLL_INTERVAL_MS=1000
+OUTBOX_BATCH_SIZE=20
+OUTBOX_LEASE_SECONDS=60
+OUTBOX_RETRY_DELAY_SECONDS=30
+OUTBOX_MAX_ATTEMPTS=12
 ```
 
 ## Upload and download rules

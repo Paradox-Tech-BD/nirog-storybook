@@ -6,7 +6,7 @@ export const evidenceFlow = `sequenceDiagram
   participant Core as Nirog Core
   participant DB as PostgreSQL / RLS
   participant R2 as Private Cloudflare R2
-  participant Queue as SQS / LocalStack
+  participant Dispatcher as Railway Dispatcher
 
   Client->>Core: Request upload intent
   Core->>DB: Verify profile scope, consent, purpose, file policy
@@ -16,7 +16,7 @@ export const evidenceFlow = `sequenceDiagram
   Client->>R2: PUT evidence bytes
   Client->>Core: Confirm metadata
   Core->>DB: Object key + hash + audit + outbox
-  Core->>Queue: Publish committed event`;
+  Dispatcher->>DB: Claim committed outbox event with lease`;
 
 <Meta title="Nirog / 08 Implementation Inception / 08 Cloudflare R2 Evidence Storage / 88 Private Evidence Boundary" />
 
@@ -28,7 +28,7 @@ Nirog uses **Cloudflare R2** for future private prescription/OCR evidence object
 
 ## The important separation
 
-R2 replaces the object-store portion of the design; it does **not** replace asynchronous event transport. LocalStack now runs only SQS emulation for the outbox, dispatcher, and ML worker. Evidence storage is deliberately disabled in local Compose unless a developer explicitly supplies a real R2 configuration.
+R2 replaces the object-store portion of the design; it does **not** replace asynchronous event transport. PostgreSQL `platform.outbox_events` is the durable event queue, and a separate Railway dispatcher claims eligible rows with leases. Evidence storage is deliberately disabled in local Compose unless a developer explicitly supplies a real R2 configuration.
 
 | Concern | Nirog component | Production setting |
 |---|---|---|
@@ -36,8 +36,8 @@ R2 replaces the object-store portion of the design; it does **not** replace asyn
 | Object endpoint | R2 S3-compatible API | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
 | S3 region | R2 client requirement | `auto` |
 | Object credentials | Bucket-scoped R2 API token | Server secret only |
-| Asynchronous events | AWS SQS | Actual SQS queue URL |
-| Local event emulation | LocalStack | `http://localstack:4566` inside Compose |
+| Asynchronous events | PostgreSQL transactional outbox | `OUTBOX_WORKER_ENABLED=true` on dispatcher only |
+| Retry/dead-letter state | PostgreSQL outbox rows | Lease, attempt, next-attempt, and dead-letter fields |
 
 ## Client-safe upload contract
 

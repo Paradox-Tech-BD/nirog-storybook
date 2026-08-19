@@ -8,7 +8,6 @@ export const runtime = `sequenceDiagram
   participant Access as OIDC + profile policy
   participant DB as Drizzle transaction + RLS
   participant Outbox as Outbox dispatcher
-  participant Queue as SQS
   participant Worker as Python ML/RAG worker
 
   Client->>API: Typed request + token + idempotency key
@@ -17,8 +16,8 @@ export const runtime = `sequenceDiagram
   API->>DB: State, consent, relation, idempotency, audit, outbox
   DB-->>API: Serialized safe receipt
   DB->>Outbox: Committed event
-  Outbox->>Queue: Versioned envelope
-  Queue->>Worker: Minimum-necessary job
+  Outbox->>DB: Claim lease with SKIP LOCKED
+  Outbox->>Worker: Versioned minimum-necessary job
   Worker->>API: Restricted result command
   API->>DB: Validate current stage and persist evidence only`;
 

@@ -1,0 +1,56 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const featureLayout = `flowchart LR
+  Route[Feature Fastify route] --> Port[UserApplicationPort]
+  Port --> Query[Focused query module]
+  Port --> Command[Focused command module]
+  Query --> Scope[UserRequestScope]
+  Command --> Scope
+  Scope --> Policy[RBAC evaluator]
+  Drizzle[DrizzleUserRequestScope] -. implements .-> Scope
+  Drizzle --> DB[PostgreSQL transaction + RLS]`;
+
+export const httpPlatform = `flowchart LR
+  Contract[Feature TypeBox contracts] --> Route[Feature routes]
+  Route --> Success[Success envelope\ndata + meta]
+  Route --> Errors[Central problem mapper]
+  Route --> Swagger[@fastify/swagger]
+  Swagger --> OpenAPI[/openapi.json]
+  OpenAPI --> Scalar[/reference/ Scalar]
+  Clerk[Global Clerk hook] --> Rate[Post-auth rate limiter]
+  Rate --> Account[account: local account ID]
+  Rate --> IP[ip: client IP]
+  Rate --> Store[Valkey/Redis in production]`;
+
+<Meta title="Nirog / 08 Implementation Inception / 08 Feature-Sliced HTTP Platform / 88 User Modules, API Semantics, and Rate Limits" />
+
+# User Modules, API Semantics, and Rate Limits
+
+The user slice no longer uses one broad application service or one combined route file. It is split into focused application **queries**, **commands**, authorization support, typed errors, feature-local HTTP contracts, response mappers, four route modules, and a small feature registration module.
+
+<MermaidDiagram title="Feature-local Clean Architecture flow" chart={featureLayout} />
+
+## One response vocabulary
+
+All successful business responses use:
+
+```json
+{ "data": {}, "meta": { "correlationId": "request-uuid" } }
+```
+
+All failures are `application/problem+json` with `type`, `title`, `status`, `code`, and `correlationId`. Validation, authentication, authorization, not-found, idempotency, rate-limit, unknown-route, and unexpected errors all go through the same global mapper. `X-Correlation-Id` is emitted on every response.
+
+## Scalar and generated OpenAPI
+
+Scalar is live at **`/reference/`**, backed by generated OpenAPI at **`/openapi.json`**. Feature-local TypeBox contracts provide the generated request schemas, success-envelope responses, shared problem schemas, bearer security metadata, and rate-limit `429` responses. `pnpm openapi:write` commits the same generated contract as `openapi/nirog-core.openapi.json`.
+
+<MermaidDiagram title="Shared HTTP platform and contract generation" chart={httpPlatform} />
+
+## Account-aware limits
+
+The rate-limit hook executes after Clerk authentication. Authenticated traffic is keyed by **local Nirog account ID**, so every device for one account shares one quota. Anonymous traffic is keyed by client IP. Health, OpenAPI, and Scalar are public exemptions.
+
+For isolated tests the plugin uses its in-memory store. Local Compose includes Valkey and points the API to `redis://valkey:6379`. Production startup rejects a missing `RATE_LIMIT_REDIS_URL`, preventing silently per-instance limits in an autoscaled environment. The rate-limit response uses the same problem shape with `429 RATE_LIMIT_EXCEEDED` and standard rate-limit headers.
+
+Read the full [Feature-Sliced HTTP Platform guide](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/10-feature-sliced-http-platform.md).

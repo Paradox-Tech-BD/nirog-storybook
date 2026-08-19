@@ -30,6 +30,7 @@ This library turns the approved Nirog architecture into an executable starting p
 | 8 | [07 — Clerk User-Subsystem Design](07-clerk-user-subsystem-design.md) | Reviewing the approved Clerk identity, profile-access, RLS, and API rules. |
 | 9 | [08 — Clerk User-Subsystem Implementation](08-clerk-user-subsystem-implementation.md) | Confirming the verified implementation scope, API contract, and deliberately deferred user-domain work. |
 | 10 | [09 — Clean Architecture and Development Artifacts](09-clean-architecture-and-development-artifacts.md) | Reviewing the executable layer boundaries, Scalar/API contract endpoints, and Drizzle migration workflow. |
+| 11 | [10 — Feature-Sliced HTTP Platform](10-feature-sliced-http-platform.md) | Reviewing focused user modules, common response/error semantics, generated Scalar/OpenAPI, and user-aware rate limits. |
 
 The [research notes](research-notes.md) preserve the evidence behind the technology and Strapi decision.
 

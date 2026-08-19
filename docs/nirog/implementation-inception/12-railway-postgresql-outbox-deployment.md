@@ -51,6 +51,7 @@ Add these in **Railway → Core API service → Variables**. Keep R2 credentials
 
 ```env
 NIROG_APP_ENV=production
+NIROG_RUNTIME_ROLE=api
 PORT=${{PORT}}
 DATABASE_URL=<Railway PostgreSQL application URL>
 POSTGRES_URL=<Railway PostgreSQL migration/admin URL>
@@ -92,6 +93,7 @@ Give it the Railway PostgreSQL dispatcher connection string and the outbox contr
 
 ```env
 NIROG_APP_ENV=production
+NIROG_RUNTIME_ROLE=dispatcher
 DATABASE_URL=<Railway PostgreSQL dispatcher URL>
 POSTGRES_URL=<Railway PostgreSQL migration/admin URL>
 
@@ -102,16 +104,8 @@ OUTBOX_LEASE_SECONDS=60
 OUTBOX_RETRY_DELAY_SECONDS=30
 OUTBOX_MAX_ATTEMPTS=12
 
-# Required config defaults for the current platform process
-EVIDENCE_STORAGE_DRIVER=r2
-EVIDENCE_R2_ENDPOINT=https://<CLOUDFLARE_ACCOUNT_ID>.r2.cloudflarestorage.com
-EVIDENCE_R2_REGION=auto
-EVIDENCE_R2_BUCKET=nirog-evidence
-EVIDENCE_R2_ACCESS_KEY_ID=<sealed R2 access key only if a handler uses R2>
-EVIDENCE_R2_SECRET_ACCESS_KEY=<sealed R2 secret key only if a handler uses R2>
-RATE_LIMIT_REDIS_URL=<managed Valkey or Redis TLS URL>
-CLERK_PUBLISHABLE_KEY=<Clerk publishable key>
-CLERK_JWT_KEY=<Clerk JWT public key>
+# No Clerk, R2, or API rate-limit configuration is required until a registered handler explicitly needs one.
+EVIDENCE_STORAGE_DRIVER=disabled
 ```
 
 Railway service and shared variables are available at build and runtime. Store access keys and private connection credentials as sealed variables; Railway documents that sealed values cannot subsequently be read through the UI or API. [2]

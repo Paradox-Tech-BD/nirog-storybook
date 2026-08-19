@@ -1,0 +1,38 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const deploymentFlow = `flowchart LR
+  Railway[Railway Core service] -->|AWS_ACCESS_KEY_ID + secret| IAM[Dedicated IAM runtime identity]
+  IAM -->|sqs:SendMessage only| Queue[(AWS SQS\nnirog-events)]
+  Queue --> Worker[Separately permissioned worker]
+  Worker -->|Receive/Delete only| Queue
+  Railway -->|Separate R2 token| R2[(Private Cloudflare R2\nnirog-evidence)]
+  Local[Docker Compose] -->|SQS emulation only| LocalStack[LocalStack]
+  Local -->|Evidence disabled by default| Disabled[No fake local evidence bucket]`;
+
+<Meta title="Nirog / 08 Implementation Inception / 09 Railway and AWS SQS / 89 Deployment Variables and IAM" />
+
+# Railway and AWS SQS: Deployment Variables and IAM
+
+When Nirog Core runs on Railway, the queue URLs identify AWS SQS resources, while a dedicated IAM access key authorizes the service to use those queues. They are different kinds of configuration. R2 storage credentials are separate again and must never be used for SQS.
+
+<MermaidDiagram title="Railway runtime identities and transport boundaries" chart={deploymentFlow} />
+
+## The Railway API service needs
+
+| Variable kind | Variables |
+|---|---|
+| Queue identifiers | `EVENT_AWS_REGION`, `SQS_EVENT_QUEUE_URL`, `SQS_EVENT_DLQ_URL` |
+| AWS runtime credentials | Sealed `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`; set `EVENT_AWS_CREDENTIAL_SOURCE=environment` |
+| R2 evidence credentials | Separate sealed `EVIDENCE_R2_ACCESS_KEY_ID`, `EVIDENCE_R2_SECRET_ACCESS_KEY` |
+| Platform prerequisites | Railway PostgreSQL URL, managed Redis/Valkey URL, and Clerk configuration |
+
+The API/dispatcher publisher identity receives `sqs:SendMessage` only for `nirog-events`. The future worker receives a different identity with receive/delete/visibility permissions. This is the required least-privilege split; neither service receives broad `sqs:*` access.
+
+## Where values come from
+
+Copy the queue URLs from the AWS SQS console after creating `nirog-events` and `nirog-events-dlq`. Create the runtime access key from a dedicated IAM deployment identity after attaching the narrow publisher policy. Create R2 keys independently in Cloudflare and scope them to `nirog-evidence`.
+
+Railway Variables makes settings available to builds and running services. Use sealed variables for every secret; service and shared variables can be referenced by the API and dispatcher without copying secret values into source files.
+
+Read the full [Railway and AWS SQS deployment guide](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/12-railway-aws-sqs-deployment.md).

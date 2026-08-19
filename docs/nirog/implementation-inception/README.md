@@ -14,7 +14,7 @@ This library turns the approved Nirog architecture into an executable starting p
 | ML and retrieval | Separate Python 3.13 worker images, PaddleOCR/ONNX Runtime as required, `pgvector` | Evidence/retrieval only; never regimen authority |
 | Workforce administration | Pinned Strapi project, custom Nirog admin plugin where needed | Separate database and workforce identities |
 | API reference | Fastify OpenAPI output, Scalar at `/reference`, Redocly CI checks | Generated from Nirog Core routes |
-| Delivery | Docker Compose locally; AWS ECS/Fargate, RDS, SQS, S3, IAM in production | Environment-specific deployment only |
+| Delivery | Docker Compose locally; AWS ECS/Fargate, RDS, SQS, Cloudflare R2, and secret-managed credentials in production | Environment-specific deployment only |
 
 ## Reading order
 
@@ -31,6 +31,7 @@ This library turns the approved Nirog architecture into an executable starting p
 | 9 | [08 — Clerk User-Subsystem Implementation](08-clerk-user-subsystem-implementation.md) | Confirming the verified implementation scope, API contract, and deliberately deferred user-domain work. |
 | 10 | [09 — Clean Architecture and Development Artifacts](09-clean-architecture-and-development-artifacts.md) | Reviewing the executable layer boundaries, Scalar/API contract endpoints, and Drizzle migration workflow. |
 | 11 | [10 — Feature-Sliced HTTP Platform](10-feature-sliced-http-platform.md) | Reviewing focused user modules, common response/error semantics, generated Scalar/OpenAPI, and user-aware rate limits. |
+| 12 | [11 — Cloudflare R2 Evidence Storage](11-cloudflare-r2-evidence-storage.md) | Configuring private evidence objects through R2 while preserving the separate SQS worker transport. |
 
 The [research notes](research-notes.md) preserve the evidence behind the technology and Strapi decision.
 

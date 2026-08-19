@@ -12,10 +12,10 @@ flowchart LR
   Workforce[Catalog/workforce user] --> Strapi[Bounded Strapi admin\nseparate project + separate DB]
 
   Core --> DB[(Clinical PostgreSQL\nidentity/catalog/prescription/regimen/adherence/platform/ai)]
-  Core --> Objects[(Private S3 evidence storage)]
+  Core --> Objects[(Private Cloudflare R2 evidence storage)]
   Core --> Outbox[(platform.outbox_events)]
   Outbox --> Dispatcher[Node outbox dispatcher]
-  Dispatcher --> SQS[SQS queues + DLQs]
+  Dispatcher --> SQS[SQS queues + DLQs\nLocalStack emulation only]
   SQS --> ML[Python ML/RAG worker]
   ML --> Internal[Restricted Nirog Core internal command]
   Internal --> Core

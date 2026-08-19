@@ -1,0 +1,52 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const evidenceFlow = `sequenceDiagram
+  participant Client as Flutter / Nirog Web
+  participant Core as Nirog Core
+  participant DB as PostgreSQL / RLS
+  participant R2 as Private Cloudflare R2
+  participant Queue as SQS / LocalStack
+
+  Client->>Core: Request upload intent
+  Core->>DB: Verify profile scope, consent, purpose, file policy
+  Core->>R2: Sign exact PUT for canonical object key
+  R2-->>Core: Short-lived URL
+  Core-->>Client: Upload contract, no storage credential
+  Client->>R2: PUT evidence bytes
+  Client->>Core: Confirm metadata
+  Core->>DB: Object key + hash + audit + outbox
+  Core->>Queue: Publish committed event`;
+
+<Meta title="Nirog / 08 Implementation Inception / 08 Cloudflare R2 Evidence Storage / 88 Private Evidence Boundary" />
+
+# Cloudflare R2: Private Evidence Boundary
+
+Nirog uses **Cloudflare R2** for future private prescription/OCR evidence objects. PostgreSQL remains the authority for every evidence record, profile relationship, consent, integrity hash, retention decision, and authorization check. R2 holds opaque bytes only.
+
+<MermaidDiagram title="Profile-scoped evidence upload flow" chart={evidenceFlow} />
+
+## The important separation
+
+R2 replaces the object-store portion of the design; it does **not** replace asynchronous event transport. LocalStack now runs only SQS emulation for the outbox, dispatcher, and ML worker. Evidence storage is deliberately disabled in local Compose unless a developer explicitly supplies a real R2 configuration.
+
+| Concern | Nirog component | Production setting |
+|---|---|---|
+| Evidence bytes | Cloudflare R2 | `EVIDENCE_STORAGE_DRIVER=r2` |
+| Object endpoint | R2 S3-compatible API | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| S3 region | R2 client requirement | `auto` |
+| Object credentials | Bucket-scoped R2 API token | Server secret only |
+| Asynchronous events | AWS SQS | Actual SQS queue URL |
+| Local event emulation | LocalStack | `http://localstack:4566` inside Compose |
+
+## Client-safe upload contract
+
+Flutter and Nirog Web request an upload intent from Core. Core verifies identity, profile scope, purpose, consent, and the allowed evidence policy before it signs a short-lived `PUT` URL for a canonical server-generated key. The client receives no R2 credential, uploads the exact signed content type, and then confirms the upload with Core.
+
+The reusable `@nirog/evidence-storage` adapter bounds URL expiry, rejects traversal-like keys, and signs R2’s S3 API only. It does not create evidence records or authorize a profile; those responsibilities stay in a future prescription/OCR use case.
+
+## Runtime guardrails
+
+Production cannot start unless R2 storage is enabled and has an HTTPS endpoint, bucket, Access Key ID, Secret Access Key, and `auto` region. Presigned links are bearer capabilities, so Nirog uses short expirations, exact object keys, signed content types, private buckets, and narrow browser CORS only when direct Web upload is introduced.
+
+Read the full [Cloudflare R2 evidence-storage decision and configuration guide](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/11-cloudflare-r2-evidence-storage.md).

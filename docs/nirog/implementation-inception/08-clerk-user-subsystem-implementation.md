@@ -51,7 +51,7 @@ The implementation separates framework boundaries from domain and persistence ru
 | `@nirog/user-domain` | Typed principal, repository/event-writer ports, and commands for projection, preferences, profiles, grants, teams, directed invitations, device lifecycle, and consent lifecycle. |
 | `@nirog/access` | Permission registry, role templates, persisted permission snapshot capability evaluator, and future `PolicyEvaluator` PBAC seam. |
 | `@nirog/db` | Drizzle tables, native transaction-scoped RLS context, JIT account helper, user repository, and event writer. |
-| API application | Clerk verifier adapter, global authentication hook, injectable user HTTP service, TypeBox route contracts, Fastify Swagger, and Scalar reference. |
+| API application | Clerk verifier adapter, global authentication hook, separate injectable user and platform-administration services, TypeBox route contracts, Fastify Swagger, and Scalar reference. |
 | PostgreSQL migration | `0001_clerk_user_subsystem.sql`, including identity/platform records, indexes, RLS policies, and the security-definer account function. |
 
 The migration adds canonical records for `identity.auth_identities`, `identity.account_preferences`, `identity.devices`, `identity.patient_profiles`, `identity.profile_access`, `identity.consents`, `identity.teams`, `identity.team_members`, and `identity.team_invitations`. It also adds `platform.provider_events` beside the existing idempotency, audit, outbox, and consumer-ledger records. The physical schema establishes the future-safe data structures now; only the endpoints and commands described below are exposed at this stage.
@@ -79,6 +79,9 @@ The generated OpenAPI server declares `/api/v1` as its base URL. Consequently, t
 | `DELETE /api/v1/devices/:deviceId` | Requires the current account and an `Idempotency-Key`; revokes only an active device owned by that account. |
 | `POST /api/v1/profiles/:profileId/consents` | Requires the profile owner and an `Idempotency-Key`; records a `data-sharing`, `research`, or `marketing` consent in the active profile/account RLS context. |
 | `DELETE /api/v1/profiles/:profileId/consents/:consentId` | Requires the profile owner and an `Idempotency-Key`; withdraws only an active consent for that owner/profile context. |
+| `GET /api/v1/platform/role-assignments` | Requires an active local `platform_admin`; lists safe non-clinical assignment lifecycle fields only. |
+| `POST /api/v1/platform/role-assignments` | Requires an active local `platform_admin` and an `Idempotency-Key`; assigns `platform_admin`, `support_agent`, or `security_auditor` with a required reason and safe audit/outbox evidence. |
+| `DELETE /api/v1/platform/role-assignments/:assignmentId` | Requires an active local `platform_admin` and an `Idempotency-Key`; revokes an active assignment and blocks removal of the final administrator. |
 
 ## Authorization and persistence invariants
 
@@ -102,7 +105,7 @@ The database enforces a partial unique index for one active grant per `(profile_
 
 ## Verification evidence
 
-After the consent/device release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` completed successfully with **37 passing tests across 12 files** (database-dependent tests are skipped only when no disposable PostgreSQL service is supplied). GitHub Actions then passed its unit and disposable PostgreSQL/RLS jobs for Core commit `768185e`; the integration job applies the `0006_consent_device_rls.sql` forward migration and asserts account-self device control plus profile-owner consent writes. Railway completed the migrator deployment before the matching API deployment became active, and `GET https://nirog.up.railway.app/api/v1/health/live` returned HTTP `200`.
+After the platform-administration release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` completed successfully with **37 passing tests and 6 environment-dependent PostgreSQL cases skipped locally**. GitHub Actions run `32361791384` passed both unit and disposable PostgreSQL/RLS jobs for Core commit `d837173`; the integration job applies `0007_platform_role_assignments.sql` and proves an active platform administrator cannot see an unrelated patient profile. Railway completed the migrator deployment before the matching API deployment became active, and `GET https://nirog.up.railway.app/api/v1/health/live` returned HTTP `200`. The follow-up one-time bootstrap procedure at `503b42f` also passed both CI jobs but remains inert until a future operator supplies its temporary sealed runtime configuration.
 
 | Test area | Verified behavior |
 |---|---|
@@ -115,6 +118,7 @@ After the consent/device release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, an
 | Team invitation RLS | Owners/admins have the intended bounded management paths, only the direct recipient can respond, and team membership does not reveal a patient profile. |
 | Device lifecycle | The HTTP contract requires idempotency, omits token/fingerprint material from responses, and the PostgreSQL check proves an unrelated account cannot revoke another account’s device. |
 | Consent lifecycle | The purpose allowlist is typed, profile ownership is enforced both in the application command and RLS policy, and the PostgreSQL check proves owner creation/withdrawal while rejecting an unrelated writer. |
+| Platform-role isolation | The active-admin predicate and platform assignment RLS policy govern only the separate assignment table. An active `platform_admin` still receives no unrelated patient-profile visibility. |
 
 The current suite uses dependency injection for the verifier and HTTP service, so it makes no real Clerk network request and does not require private credentials. Docker and live-PostgreSQL integration validation remain outside this sandbox because a Docker daemon is unavailable.
 
@@ -132,7 +136,7 @@ These are the remaining parts of the user-domain release boundary. The next prod
 
 ## Current access-administration position
 
-The implemented roles are **patient-profile roles**, not global platform-administrator roles. A profile owner can grant `caregiver`, `curator`, or `viewer` access through the protected profile-grant contract; the role is converted into a persisted permission snapshot at grant time. Team `owner`, `admin`, and `member` records now have an explicit, RLS-verified invitation lifecycle, but team membership intentionally has no patient-data authority. There is no implemented `platform_admin` assignment or staff-administration API yet, so neither a Clerk Organization role nor a direct database edit should be presented as Core clinical authority.
+The implemented roles include **patient-profile roles** and a separate non-clinical platform-role plane. A profile owner can grant `caregiver`, `curator`, or `viewer` access through the protected profile-grant contract; the role is converted into a persisted permission snapshot at grant time. Team `owner`, `admin`, and `member` records remain non-clinical. Platform `platform_admin`, `support_agent`, and `security_auditor` records are equally non-clinical: neither a platform role, Clerk Organization role, nor direct database edit is Core clinical authority.
 
 The recommended next access slice is the documented [current project-state and access-setup handoff](13-current-project-state-and-access-setup.md), which separates platform administration, workforce/editorial access, team collaboration, and patient-care delegation before any global-admin feature is added.
 

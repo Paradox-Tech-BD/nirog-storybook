@@ -48,7 +48,7 @@ The implementation separates framework boundaries from domain and persistence ru
 | Layer | Implemented responsibility |
 |---|---|
 | `@nirog/auth` | Framework-independent `ClerkRequestVerifier` port and strict `bearerToken()` parsing. |
-| `@nirog/user-domain` | Typed principal, repository/event-writer ports, and commands for projection, preferences, profiles, grants, and teams. |
+| `@nirog/user-domain` | Typed principal, repository/event-writer ports, and commands for projection, preferences, profiles, grants, teams, and directed team invitations. |
 | `@nirog/access` | Permission registry, role templates, persisted permission snapshot capability evaluator, and future `PolicyEvaluator` PBAC seam. |
 | `@nirog/db` | Drizzle tables, native transaction-scoped RLS context, JIT account helper, user repository, and event writer. |
 | API application | Clerk verifier adapter, global authentication hook, injectable user HTTP service, TypeBox route contracts, Fastify Swagger, and Scalar reference. |
@@ -71,6 +71,10 @@ The generated OpenAPI server declares `/api/v1` as its base URL. Consequently, t
 | `POST /api/v1/profiles/:profileId/access-grants` | Requires ownership or `share.manage`, validates the role-template snapshot, and requires an `Idempotency-Key`. |
 | `DELETE /api/v1/profiles/:profileId/access-grants/:grantId` | Requires ownership or `share.manage`, and requires an `Idempotency-Key`. |
 | `POST /api/v1/teams` | Creates a collaboration team for the authenticated account with an `Idempotency-Key`. Team membership conveys no patient-data capability. |
+| `POST /api/v1/teams/:teamId/invitations` | An active team owner may invite `admin` or `member`; an active team administrator may invite `member` only. Direct recipient account ID and an `Idempotency-Key` are required. |
+| `POST /api/v1/teams/:teamId/invitations/:invitationId/accept` | The direct recipient alone accepts a pending, unexpired invitation with an `Idempotency-Key`; membership changes are transactional and non-clinical. |
+| `POST /api/v1/teams/:teamId/invitations/:invitationId/decline` | The direct recipient alone declines a pending, unexpired invitation with an `Idempotency-Key`. |
+| `DELETE /api/v1/teams/:teamId/invitations/:invitationId` | An active team owner or administrator cancels a pending invitation with an `Idempotency-Key`. |
 
 ## Authorization and persistence invariants
 
@@ -94,7 +98,7 @@ The database enforces a partial unique index for one active grant per `(profile_
 
 ## Verification evidence
 
-After the live persistence correction, `pnpm lint`, `pnpm typecheck`, and `pnpm test` completed successfully with **30 passing tests across 9 files**. The authenticated Nirog Web account refresh was also verified against the active Railway API deployment.
+After the invitation release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` completed successfully with **36 passing tests across 12 files** (database-dependent tests are skipped only when no disposable PostgreSQL service is supplied). GitHub Actions then passed its unit and disposable PostgreSQL/RLS jobs, which apply the forward team-invitation and team-capability migrations. The authenticated Nirog Web account refresh was also verified against the active Railway API deployment.
 
 | Test area | Verified behavior |
 |---|---|
@@ -103,7 +107,8 @@ After the live persistence correction, `pnpm lint`, `pnpm typecheck`, and `pnpm 
 | Clerk boundary | Bearer parsing is strict, and absent server/JWT verification configuration fails closed. |
 | API behavior | Anonymous `/me` is rejected with `401`; a dependency-injected verified principal produces the typed local account view; the live Web bridge now retrieves the signed-in account projection successfully. |
 | Idempotency and profile command | A mutation without `Idempotency-Key` fails with the declared client error; a keyed profile creation succeeds. |
-| Generated contract | The OpenAPI document exposes bearer security on the server-relative `/me` operation. |
+| Generated contract | The OpenAPI document exposes bearer security on the server-relative `/me` operation and the new typed invitation lifecycle routes. |
+| Team invitation RLS | Owners/admins have the intended bounded management paths, only the direct recipient can respond, and team membership does not reveal a patient profile. |
 
 The current suite uses dependency injection for the verifier and HTTP service, so it makes no real Clerk network request and does not require private credentials. Docker and live-PostgreSQL integration validation remain outside this sandbox because a Docker daemon is unavailable.
 
@@ -113,7 +118,6 @@ The physical tables and domain seams exist, but the following route slices are i
 
 | Deferred slice | Required implementation outcome |
 |---|---|
-| Team invitations | Idempotent create and directed acceptance routes; expiry/one-time token checks; membership creation in the acceptance transaction. |
 | Clerk lifecycle event processing | The public Svix-signed receiving endpoint is implemented with replay-safe provider-event recording and audit/outbox evidence. Safe deactivation, device revocation, active-grant revocation, and dispatcher consumers remain separate lifecycle-processing work. |
 | Device management | Registered Flutter device lifecycle, encrypted push-token handling, and revocation endpoints. |
 | Consent management | Explicit consent capture/revocation records and command endpoints, later connected to policy decisions. |
@@ -123,7 +127,7 @@ These are the remaining parts of the user-domain release boundary. The next prod
 
 ## Current access-administration position
 
-The implemented roles are **patient-profile roles**, not global platform-administrator roles. A profile owner can grant `caregiver`, `curator`, or `viewer` access through the protected profile-grant contract; the role is converted into a persisted permission snapshot at grant time. A created team has `owner`, `admin`, and `member` membership records, but team membership intentionally has no patient-data authority and invitation routes are still deferred. There is no implemented `platform_admin` assignment or staff-administration API yet, so neither a Clerk Organization role nor a direct database edit should be presented as Core clinical authority.
+The implemented roles are **patient-profile roles**, not global platform-administrator roles. A profile owner can grant `caregiver`, `curator`, or `viewer` access through the protected profile-grant contract; the role is converted into a persisted permission snapshot at grant time. Team `owner`, `admin`, and `member` records now have an explicit, RLS-verified invitation lifecycle, but team membership intentionally has no patient-data authority. There is no implemented `platform_admin` assignment or staff-administration API yet, so neither a Clerk Organization role nor a direct database edit should be presented as Core clinical authority.
 
 The recommended next access slice is the documented [current project-state and access-setup handoff](13-current-project-state-and-access-setup.md), which separates platform administration, workforce/editorial access, team collaboration, and patient-care delegation before any global-admin feature is added.
 

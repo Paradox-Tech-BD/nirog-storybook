@@ -1,6 +1,6 @@
 # Clerk User Subsystem — Verified Implementation Record
 
-**Status:** implemented and unit/API verified on 18 August 2026  
+**Status:** identity/access baseline plus manual medication and bounded OCR worker API boundary implemented, verified, and deployed through 20 August 2026  
 **Primary repository:** `Paradox-Tech-BD/nirog-core`  
 **API server base:** `/api/v1`  
 **Authentication authority:** Clerk  
@@ -89,6 +89,8 @@ The generated OpenAPI server declares `/api/v1` as its base URL. Consequently, t
 | `GET /api/v1/profiles/:profileId/prescriptions/:prescriptionId/evidence` | Requires profile ownership or `document.read_metadata`; lists safe evidence lifecycle metadata only and never returns an object key, R2 URL, image bytes, OCR text, or model result. |
 | `POST /api/v1/profiles/:profileId/prescriptions/:prescriptionId/evidence/uploads` | Requires `document.create` and an `Idempotency-Key`; creates a profile-bound evidence record and returns a short-lived upload authorization for an allowlisted image/PDF type. |
 | `POST /api/v1/profiles/:profileId/prescriptions/:prescriptionId/evidence/:evidenceId/complete` | Requires `document.create` and an `Idempotency-Key`; validates the profile/prescription/evidence chain, creates one OCR job, and atomically emits an identifier-only outbox event. |
+| `GET /api/v1/profiles/:profileId/evidence/:evidenceId/ocr-extractions` | Requires `document.read_metadata` and `regimen.read`; lists profile-scoped stored candidates for explicit review. |
+| `POST /api/v1/profiles/:profileId/ocr-extractions/:extractionId/review` | Requires `regimen.write` and an `Idempotency-Key`; explicitly accepts or rejects a pending candidate without creating or editing a regimen. |
 
 ## Authorization and persistence invariants
 
@@ -116,6 +118,8 @@ After the manual medication release, `pnpm lint`, `pnpm typecheck`, `pnpm test`,
 
 The Phase 8 evidence foundation then completed `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` with **40 passing tests and 8 environment-dependent PostgreSQL cases skipped locally**. GitHub Actions run `32371786274` passed for Core commit `d6d5505`. The new disposable PostgreSQL/RLS assertion proves prescription evidence is invisible under an unrelated account/profile context and rejects a cross-profile evidence reference. Railway completed `0009_prescription_evidence_ocr.sql` through the migrator before activating the matching API revision; public liveness returned HTTP `200`. Production R2 evidence processing now fails closed without the masked `NIROG_INTERNAL_WORKER_SECRET` runtime setting.
 
+The worker-boundary release completed `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` with **41 passing tests and 9 environment-dependent PostgreSQL cases skipped locally**. GitHub Actions run `32374259187` passed for Core commit `7a29173`. Migration `0010_ocr_worker_boundary.sql` adds a hashed opaque lease token and internal worker RLS predicate. The API suite rejects missing and incorrect worker secrets; the disposable PostgreSQL assertion scopes an OCR workload to its selected profile/job. Railway completed the `0010` migrator revision before activating the matching API revision, and public liveness returned HTTP `200`.
+
 | Test area | Verified behavior |
 |---|---|
 | Persisted RBAC capability | An allowed snapshot permission is accepted; a missing permission is rejected. |
@@ -130,6 +134,7 @@ The Phase 8 evidence foundation then completed `pnpm lint`, `pnpm typecheck`, `p
 | Platform-role isolation | The active-admin predicate and platform assignment RLS policy govern only the separate assignment table. An active `platform_admin` still receives no unrelated patient-profile visibility. |
 | Manual medication | Regimen creation requires idempotency and emits only safe identifiers in audit/outbox records. A manually logged dose outcome is profile-constrained, and the database RLS suite rejects a cross-profile clinical write. |
 | Evidence foundation | The upload contract rejects a missing idempotency key, returns only safe lifecycle metadata plus a short-lived upload authorization, and completion produces an OCR-job identifier without exposing a storage key. The RLS suite rejects mismatched profile evidence access. |
+| OCR worker boundary | The private route prefix bypasses Clerk only to apply a constant-time sealed-secret check. An active job lease stores only a token hash; object access is lease-bound and short-lived; results are bounded; retry/dead-letter transitions are Core-owned; and extraction review cannot mutate a regimen. |
 
 The current suite uses dependency injection for the verifier and HTTP service, so it makes no real Clerk network request and does not require private credentials. Docker and live-PostgreSQL integration validation remain outside this sandbox because a Docker daemon is unavailable.
 
@@ -143,13 +148,13 @@ The physical tables and domain seams exist, but the following route slices are i
 | Consent-governed policy decisions | The deployed consent record is auditable and purpose-bound, but no profile grant or clinical read path is currently widened from a consent alone. Future PBAC rules may consume the record explicitly. |
 | Live database integration | Migration execution, SQL function privileges, RLS owner/grantee isolation, transaction scope, outbox atomicity, and webhook replay tests against PostgreSQL. |
 
-These are the remaining parts of the user-domain release boundary. The next product-domain slice—prescription/OCR—should begin only after this pending user-domain work is explicitly requested and completed.
+These are the remaining parts of the user-domain release boundary. The subsequent product-domain work is the concrete OCR-engine worker peer, which must consume only a dispatcher-issued job reference and use the deployed private lease/read/result boundary rather than a direct database or R2 credential path.
 
 ## Current access-administration position
 
 The implemented roles include **patient-profile roles** and a separate non-clinical platform-role plane. A profile owner can grant `caregiver`, `curator`, or `viewer` access through the protected profile-grant contract; the role is converted into a persisted permission snapshot at grant time. Team `owner`, `admin`, and `member` records remain non-clinical. Platform `platform_admin`, `support_agent`, and `security_auditor` records are equally non-clinical: neither a platform role, Clerk Organization role, nor direct database edit is Core clinical authority.
 
-The deployed follow-on product slices are manual medication entry and the evidence foundation. Core commit `2acf528` adds profile-scoped manual prescriptions, regimens, schedules, and dose outcomes using the existing persisted `regimen.*` and `adherence.*` permissions. Core commit `d6d5505` adds profile-scoped evidence metadata, constrained R2 upload authorization, and identifier-only OCR-job dispatch using `document.*` permissions. Platform roles remain non-clinical. The next work is the documented [current project-state and access-setup handoff](13-current-project-state-and-access-setup.md) worker lease/result and review boundary, which must preserve the separation between platform administration, workforce/editorial activity, team collaboration, and patient-care delegation.
+The deployed follow-on product slices are manual medication entry, the evidence foundation, and the worker-facing OCR boundary. Core commit `2acf528` adds profile-scoped manual prescriptions, regimens, schedules, and dose outcomes using the existing persisted `regimen.*` and `adherence.*` permissions. Core commit `d6d5505` adds profile-scoped evidence metadata, constrained R2 upload authorization, and identifier-only OCR-job dispatch using `document.*` permissions. Core commit `7a29173` adds the sealed-secret lease/read/result and explicit review boundary. Platform roles remain non-clinical. The next work is a concrete OCR-engine worker peer documented in the [current project-state and access-setup handoff](13-current-project-state-and-access-setup.md); it must preserve the separation between platform administration, workforce/editorial activity, team collaboration, and patient-care delegation.
 
 ## References
 

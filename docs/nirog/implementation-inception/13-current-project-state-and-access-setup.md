@@ -9,8 +9,8 @@
 
 | Repository or runtime | Current state | What it proves |
 |---|---|---|
-| `nirog-core` | `main` at `503b42f` | The Core includes the deployed `d837173` isolated platform-role authority plane plus a subsequently verified, operator-only first-administrator bootstrap procedure. The normal API exposes no bootstrap route. |
-| Railway Core API | Online with `d837173` active | The platform-role migration completed first, then the matching API revision became active. Public liveness returned HTTP `200`; verified Clerk account projection and signed webhook receiving remain available. |
+| `nirog-core` | `main` at `2acf528` | The Core includes the deployed platform-role authority plane plus manual medication commands, a dedicated clinical schema, and profile-scoped RLS policies. The normal API still exposes no first-administrator bootstrap route. |
+| Railway Core API | Online with `2acf528` active | The clinical migration `0008_manual_medication.sql` completed first through the migrator, then the matching API revision became active. Public liveness returned HTTP `200`. |
 | `nirog-web` | `main` at `3ac4be0` | The Next.js bridge normalizes the Core API base to `/api/v1`, forwards the current Clerk session token, and renders the current account result. |
 | Live Nirog Web | Verified with the preserved signed-in session | Repeated `Refresh record` requests render the verified empty-profile state, preferences, and a correlation ID rather than `401`, `404`, or `500`. |
 | `nirog-storybook` | Canonical `main` and deployment `next` | The incident history, architecture decisions, implementation plans, and this handoff are documented in the canonical repository and deployment branch. |
@@ -33,7 +33,8 @@ The current slice establishes a secure identity and profile-authority foundation
 | Clerk lifecycle webhooks | Development activation verified | The public `/api/v1/integrations/clerk/webhooks` route preserves raw payload bytes, verifies the Svix signature with Clerk’s supported verifier, records supported lifecycle deliveries idempotently, and emits audit/outbox evidence. The Nirog Development endpoint subscribes only to `user.created`, `user.updated`, and `user.deleted`; its protected Railway signing secret is active, and a real `user.created` delivery received HTTP `202` from Core. |
 | Device lifecycle | API implemented and deployed | An authenticated account may register/reactivate an `ios`, `android`, or `web` device and revoke only its own active device. Device fingerprints and optional push tokens are SHA-256 hashed before persistence and never appear in API responses, audit metadata, or outbox payloads. |
 | Consent lifecycle | API implemented and deployed | Only the profile owner may create or withdraw an active, purpose-bound consent for `data-sharing`, `research`, or `marketing`. The action is bound to the active profile/account RLS context and emits audit/outbox evidence. |
-| Medicine, prescription, and OCR workflows | Not implemented as public product slices | The architecture and schema direction exist; their product routes and worker flows are still future work. |
+| Manual medication, prescription, regimen, schedule, and dose outcomes | API implemented and deployed | Authorized callers can list manual regimens and create manual prescriptions, regimens with bounded local schedules, and dose outcomes. Every mutation requires an idempotency key and emits only safe identifiers in audit/outbox evidence. |
+| Prescription evidence and OCR workflows | Deliberately deferred to Phase 8 | R2 evidence objects, OCR jobs, image bytes, extracted text, model output, and worker return commands remain outside the deployed manual-entry slice. |
 
 ## 3. Roles that exist today
 
@@ -101,6 +102,8 @@ Clerk Organization roles may be used later as a sign-in and navigation convenien
 The immediate technical order protects identity and authorization before the medication/OCR product surface grows.
 
 1. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts now that the user/access release boundary is complete.
+
+The first medication milestone is now complete: Core commit `2acf528` supplies a profile-scoped manual prescription/regimen/dose vertical slice. The follow-on evidence/OCR work must remain bounded to evidence references, upload authorization, job references, and authenticated worker result commands. It must not make a platform role, a worker, a client-selected profile, or a raw evidence URI an authorization shortcut.
 
 This order keeps clinical and ML workloads from depending on incomplete human-access controls. The existing outbox and dispatcher architecture can then carry OCR job references and notification work without letting an ML worker become a patient-data authority.[5]
 

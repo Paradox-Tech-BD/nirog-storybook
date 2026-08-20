@@ -61,6 +61,16 @@ The complete implementation stack was published to GitHub as `81a794aff44` on ca
 
 The transactional core now supersedes the earlier FastAPI/SQLAlchemy implementation option: it will be Node.js/TypeScript with Fastify, TypeBox/JSON Schema validation, Drizzle and PostgreSQL. The existing modular-monolith, command ownership, RLS, persisted RBAC grant, PBAC evaluator, private-evidence, outbox, idempotency, and Flutter-authority rules remain unchanged. Python is not a second backend: it is a separately deployed ML/RAG worker process that receives bounded work references and returns through a narrow authenticated internal command boundary.
 
+## Manual medication vertical slice
+
+- [x] Implement and deploy profile-scoped manual prescription, regimen, local schedule, and dose-outcome records through a dedicated clinical schema and forward migration `0008_manual_medication.sql`.
+- [x] Add the `@nirog/medication-domain` contract, profile-scoped Drizzle repository/request scope, permission-checked medication commands, TypeBox HTTP contracts, Fastify route registration, and generated OpenAPI snapshot.
+- [x] Prove mutation idempotency, safe typed HTTP responses, and clinical profile isolation with Core API and disposable PostgreSQL RLS integration coverage.
+- [x] Complete migration-first Railway rollout: the migrator applied clinical RLS before the matching API revision, and public liveness returned HTTP `200`.
+- [ ] Begin Phase 8: introduce prescription-evidence records, constrained Cloudflare R2 upload authorization, transactional OCR job enqueueing, and a narrow ML-worker return boundary. Do not place raw evidence, image bytes, OCR text, or model output in audit/outbox payloads.
+
+Core commit `2acf528` delivers the manual medication vertical slice. It exposes `GET /api/v1/profiles/:profileId/medications`, plus idempotent creation routes for manual prescriptions, regimens with local-time schedules, and dose outcomes. The only clinical authority path is profile ownership or a persisted `regimen.*`/`adherence.*` permission snapshot; platform roles remain outside all medication policies. The verified Core suite reports 38 passing tests with 7 environment-dependent integration tests skipped locally, while GitHub Actions run `32364153819` passed. Railway migrator and API deployments both completed successfully, and `https://nirog.up.railway.app/api/v1/health/live` returned HTTP `200`.
+
 ## Strapi platform evaluation
 
 - [x] Inspect the official Strapi repository, supported architecture, plugin extension model, and engineering-guideline repository.
@@ -324,5 +334,7 @@ The next bounded increment is dedicated platform administration. It will introdu
 The next bounded product increment is manual medication management: an explicitly profile-authorized catalog selection, prescription/regimen, dose schedule, and dose-log vertical slice. It must preserve profile-grant authority, consent/device/platform-role separation, idempotency, audit/outbox evidence, and no OCR evidence processing until the later dedicated workflow increment.
 
 - [ ] Implement and verify the manual medication vertical slice with typed Core routes, profile-scoped RLS, audit/outbox evidence, disposable PostgreSQL assertions, and generated Scalar/OpenAPI documentation.
+
+**Standing delivery rule:** after each increment has passed local verification, GitHub Actions, migration-first Railway deployment, public health validation, and Storybook synchronization, automatically plan and begin the next bounded increment. Do not pause for routine approval; pause only for an operator-only secret, a non-inferable real-world identity decision, a destructive action, or a material safety conflict.
 
 The stack must preserve a modular FastAPI/Python monolith with explicit application/domain/port/infrastructure layers, strict Pydantic transport models and immutable command types, PostgreSQL as the canonical authority with transaction-scoped RLS defense in depth, private object storage for evidence, a Redis-compatible broker/cache, separately scaled worker pools, OIDC/OAuth2 actor resolution, current profile capability evaluation, RBAC with a future policy evaluator seam, Flutter-safe OpenAPI/change-feed contracts, transactional outbox/idempotency, and redacted end-to-end observability.

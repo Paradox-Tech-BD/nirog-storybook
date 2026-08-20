@@ -82,6 +82,10 @@ The generated OpenAPI server declares `/api/v1` as its base URL. Consequently, t
 | `GET /api/v1/platform/role-assignments` | Requires an active local `platform_admin`; lists safe non-clinical assignment lifecycle fields only. |
 | `POST /api/v1/platform/role-assignments` | Requires an active local `platform_admin` and an `Idempotency-Key`; assigns `platform_admin`, `support_agent`, or `security_auditor` with a required reason and safe audit/outbox evidence. |
 | `DELETE /api/v1/platform/role-assignments/:assignmentId` | Requires an active local `platform_admin` and an `Idempotency-Key`; revokes an active assignment and blocks removal of the final administrator. |
+| `GET /api/v1/profiles/:profileId/medications` | Requires profile ownership or a persisted `regimen.read` snapshot; returns safe manual-regimen fields only. |
+| `POST /api/v1/profiles/:profileId/prescriptions` | Requires `regimen.write` and an `Idempotency-Key`; creates only a manual prescription context, without evidence or OCR input. |
+| `POST /api/v1/profiles/:profileId/regimens` | Requires `regimen.write` and an `Idempotency-Key`; creates a manual regimen and validated local-time schedules inside the profile RLS transaction. |
+| `POST /api/v1/profiles/:profileId/regimens/:regimenId/dose-logs` | Requires `adherence.write` and an `Idempotency-Key`; blocks cross-profile regimen references before appending a dose outcome. |
 
 ## Authorization and persistence invariants
 
@@ -105,7 +109,7 @@ The database enforces a partial unique index for one active grant per `(profile_
 
 ## Verification evidence
 
-After the platform-administration release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` completed successfully with **37 passing tests and 6 environment-dependent PostgreSQL cases skipped locally**. GitHub Actions run `32361791384` passed both unit and disposable PostgreSQL/RLS jobs for Core commit `d837173`; the integration job applies `0007_platform_role_assignments.sql` and proves an active platform administrator cannot see an unrelated patient profile. Railway completed the migrator deployment before the matching API deployment became active, and `GET https://nirog.up.railway.app/api/v1/health/live` returned HTTP `200`. The follow-up one-time bootstrap procedure at `503b42f` also passed both CI jobs but remains inert until a future operator supplies its temporary sealed runtime configuration.
+After the manual medication release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` completed successfully with **38 passing tests and 7 environment-dependent PostgreSQL cases skipped locally**. GitHub Actions run `32364153819` passed both unit and disposable PostgreSQL/RLS jobs for Core commit `2acf528`; the clinical integration coverage applies `0008_manual_medication.sql` and proves an unrelated account cannot read a regimen selected through another profile context or write across profile boundaries. Railway completed the `0008` migrator deployment before the matching API deployment became active, and `GET https://nirog.up.railway.app/api/v1/health/live` returned HTTP `200`.
 
 | Test area | Verified behavior |
 |---|---|
@@ -119,6 +123,7 @@ After the platform-administration release, `pnpm lint`, `pnpm typecheck`, `pnpm 
 | Device lifecycle | The HTTP contract requires idempotency, omits token/fingerprint material from responses, and the PostgreSQL check proves an unrelated account cannot revoke another account’s device. |
 | Consent lifecycle | The purpose allowlist is typed, profile ownership is enforced both in the application command and RLS policy, and the PostgreSQL check proves owner creation/withdrawal while rejecting an unrelated writer. |
 | Platform-role isolation | The active-admin predicate and platform assignment RLS policy govern only the separate assignment table. An active `platform_admin` still receives no unrelated patient-profile visibility. |
+| Manual medication | Regimen creation requires idempotency and emits only safe identifiers in audit/outbox records. A manually logged dose outcome is profile-constrained, and the database RLS suite rejects a cross-profile clinical write. |
 
 The current suite uses dependency injection for the verifier and HTTP service, so it makes no real Clerk network request and does not require private credentials. Docker and live-PostgreSQL integration validation remain outside this sandbox because a Docker daemon is unavailable.
 
@@ -138,7 +143,7 @@ These are the remaining parts of the user-domain release boundary. The next prod
 
 The implemented roles include **patient-profile roles** and a separate non-clinical platform-role plane. A profile owner can grant `caregiver`, `curator`, or `viewer` access through the protected profile-grant contract; the role is converted into a persisted permission snapshot at grant time. Team `owner`, `admin`, and `member` records remain non-clinical. Platform `platform_admin`, `support_agent`, and `security_auditor` records are equally non-clinical: neither a platform role, Clerk Organization role, nor direct database edit is Core clinical authority.
 
-The recommended next access slice is the documented [current project-state and access-setup handoff](13-current-project-state-and-access-setup.md), which separates platform administration, workforce/editorial access, team collaboration, and patient-care delegation before any global-admin feature is added.
+The deployed follow-on product slice is manual medication entry: Core commit `2acf528` adds profile-scoped manual prescriptions, regimens, schedules, and dose outcomes using the existing persisted `regimen.*` and `adherence.*` permissions. Platform roles remain non-clinical. The next work is the documented [current project-state and access-setup handoff](13-current-project-state-and-access-setup.md) Phase 8 evidence/OCR boundary, which must preserve the separation between platform administration, workforce/editorial activity, team collaboration, and patient-care delegation.
 
 ## References
 

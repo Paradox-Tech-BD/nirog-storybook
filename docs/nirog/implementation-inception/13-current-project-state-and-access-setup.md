@@ -28,7 +28,7 @@ The current slice establishes a secure identity and profile-authority foundation
 | Patient profile creation and updates | API implemented | The authenticated account becomes the implicit owner of a created profile. |
 | Delegated profile grants | API implemented | The owner can create, list, and revoke bounded `caregiver`, `curator`, or `viewer` grants. |
 | Team creation | API implemented | An authenticated account can create a collaboration team and becomes its team owner. |
-| Team invitations and member onboarding | Not exposed yet | Supporting tables and repository methods exist, but safe create/accept endpoints and invitation delivery are deferred. |
+| Team invitations and member onboarding | API implemented and deployed | Direct-account invitations support create, accept, decline, cancel, idempotency, default/maximum expiry, audit/outbox evidence, and PostgreSQL RLS enforcement. A team role remains non-clinical. |
 | Platform staff administration | Not implemented | There is no global `platform_admin` role model or endpoint in Core today. |
 | Clerk lifecycle webhooks | Development activation verified | The public `/api/v1/integrations/clerk/webhooks` route preserves raw payload bytes, verifies the Svix signature with Clerk’s supported verifier, records supported lifecycle deliveries idempotently, and emits audit/outbox evidence. The Nirog Development endpoint subscribes only to `user.created`, `user.updated`, and `user.deleted`; its protected Railway signing secret is active, and a real `user.created` delivery received HTTP `202` from Core. |
 | Device, consent, medicine, prescription, and OCR workflows | Not implemented as public product slices | The architecture and schema direction exist; their product routes and worker flows are still future work. |
@@ -48,11 +48,11 @@ The following roles apply to **one patient profile only**. They are not global a
 
 These roles are the only current path to patient-data authority besides ownership. A team role, Clerk dashboard role, selected profile in a client, or UI state does not replace a profile grant.[1]
 
-### Collaboration-team roles: stored, but non-clinical
+### Collaboration-team roles: implemented, but non-clinical
 
 The current team model has `owner`, `admin`, and `member` records. The creator of `POST /api/v1/teams` becomes its `owner`. These roles are intended for collaboration and future team workflow administration only. They **do not** grant access to a patient profile; a team administrator still needs an explicit profile grant to read patient data.
 
-Because invitation routes are not yet exposed, the safe current state is to create teams only for the account that created them. Do not manually insert members into Neon or treat a team row as a patient-data grant.
+Team owners may invite either `admin` or `member` accounts. Active team administrators may invite and cancel `member` invitations only; they cannot assign another administrator. The intended account alone may accept or decline its direct invitation. Invitation expiry defaults to seven days and is bounded to 30 days. Do not manually insert members into Neon or treat a team row as a patient-data grant.
 
 ### Platform and workforce roles: deliberately not implemented
 
@@ -68,10 +68,10 @@ The following current workflow is safe and supported by the present implementati
 | Make someone a profile owner | Have that person create their own patient profile through the implemented profile flow. | Ownership is profile-specific and cannot be assigned by declaring a global administrator. |
 | Let a trusted person help with one profile | Use the profile-owner grant flow with `caregiver`, `curator`, or `viewer` after the recipient has a local account. | The grant must be created through the authorized API and should include a stated purpose and, where appropriate, expiry. |
 | Create a collaboration workspace | Create a team through `POST /api/v1/teams` using an idempotency key. | The creator is team owner, but team membership does not grant patient-data access. |
-| Add a team administrator or member | Wait for the invitation slice. | Do not perform manual database edits or attempt to infer membership from a Clerk Organization. |
+| Add a team administrator or member | Use `POST /api/v1/teams/:teamId/invitations` with an idempotency key and the recipient’s local account ID. The recipient uses the dedicated accept or decline route. | A team owner may invite `admin` or `member`; a team admin may invite only `member`. Do not perform manual database edits or infer membership from a Clerk Organization. |
 | Make a platform administrator | Do not assign one in Core yet. Implement the dedicated platform-admin slice below first. | A global admin must remain distinct from clinical/profile authority. |
 
-The current Web companion confirms account projection and empty-profile state. It does not yet provide a full administrative console for profile grants, teams, invitations, or staff. Until the invitation and staff slices exist, use the documented API contract in Scalar only for controlled test operations; do not bypass it with direct database changes.[3]
+The current Web companion confirms account projection and empty-profile state. It does not yet provide a full administrative console for profile grants, teams, invitations, or staff. Use Scalar’s documented invitation routes only for controlled test operations until the Web companion exposes these flows; do not bypass Core with direct database changes.[3]
 
 ## 5. Recommended administrator model before implementation
 
@@ -81,7 +81,7 @@ The next administration implementation should create four separate planes rather
 |---|---|---|---|
 | Platform operations | `platform_admin`, `support_agent`, `security_auditor` | None | Core `platform_role_assignments` with explicit audit and a bootstrap workflow. |
 | Workforce/editorial | `catalog_editor`, `catalog_reviewer`, `catalog_publisher` | None | Bounded Strapi or an equivalent workforce plane, with signed release handoff to Core. |
-| Collaboration | `team.owner`, `team.admin`, `team.member` | None | Existing Core teams plus the future invitation lifecycle. |
+| Collaboration | `team.owner`, `team.admin`, `team.member` | None | Existing Core teams and deployed direct-account invitation lifecycle. |
 | Patient care | `owner`, `caregiver`, `curator`, `viewer` | Exactly the persisted profile-grant snapshot | Existing Core profile-grant model. |
 
 The implementation should include a new `identity.platform_role_assignments` record with assignment status, issuer, account ID, role code, granting actor, reason, expiry, creation and revocation timestamps, and an immutable audit/outbox trail. A one-time bootstrap command should assign the first `platform_admin` to a verified local account without embedding an email, Clerk user ID, or secret in source control. The command must be protected by an environment-specific operational procedure and disabled after use.
@@ -94,10 +94,9 @@ Clerk Organization roles may be used later as a sign-in and navigation convenien
 
 The immediate technical order protects identity and authorization before the medication/OCR product surface grows.
 
-1. **Implement directed team invitations.** Add create, accept, decline, cancel, and expiry operations; require recipient confirmation; issue auditable membership changes without granting patient data.
-2. **Implement consent and device lifecycle.** Capture and revoke sharing consent explicitly; add device registration, encrypted push-token handling, and session/device revocation.
-3. **Implement the dedicated platform-administration slice.** Add the separate platform-role model, bootstrap procedure, operational APIs, audit/outbox events, and no-clinical-access-by-default policy described above.
-4. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts only after the user/access release boundary is complete.
+1. **Implement consent and device lifecycle.** Capture and revoke sharing consent explicitly; add device registration, encrypted push-token handling, and session/device revocation.
+2. **Implement the dedicated platform-administration slice.** Add the separate platform-role model, bootstrap procedure, operational APIs, audit/outbox events, and no-clinical-access-by-default policy described above.
+3. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts only after the user/access release boundary is complete.
 
 This order keeps clinical and ML workloads from depending on incomplete human-access controls. The existing outbox and dispatcher architecture can then carry OCR job references and notification work without letting an ML worker become a patient-data authority.[5]
 

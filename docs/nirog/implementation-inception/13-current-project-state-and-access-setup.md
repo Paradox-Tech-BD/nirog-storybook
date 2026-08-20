@@ -9,8 +9,8 @@
 
 | Repository or runtime | Current state | What it proves |
 |---|---|---|
-| `nirog-core` | `main` at `098b762` | Fastify, TypeBox, Drizzle, PostgreSQL RLS, Clerk verification, account projection, profile grants, team creation, Scalar/OpenAPI, rate limits, R2 adapter, outbox dispatcher contracts, and the native Drizzle request-transaction correction are implemented. |
-| Railway Core API | Online with `098b762` active | An authenticated request crosses the Web bridge, Clerk verifier, JIT account projection, RLS context, and Drizzle repository path successfully. |
+| `nirog-core` | `main` at `43e6ec9` | Fastify, TypeBox, Drizzle, PostgreSQL RLS, Clerk verification, account projection, profile grants, team creation, Scalar/OpenAPI, rate limits, R2 adapter, outbox dispatcher contracts, the native request-transaction correction, the forward RLS recursion repair, and the Clerk webhook receiving boundary are implemented. |
+| Railway Core API | Online with `43e6ec9` active | An authenticated request crosses the Web bridge, Clerk verifier, JIT account projection, RLS context, and Drizzle repository path successfully; the configured Clerk Development endpoint also reaches the signed webhook receiver. |
 | `nirog-web` | `main` at `3ac4be0` | The Next.js bridge normalizes the Core API base to `/api/v1`, forwards the current Clerk session token, and renders the current account result. |
 | Live Nirog Web | Verified with the preserved signed-in session | Repeated `Refresh record` requests render the verified empty-profile state, preferences, and a correlation ID rather than `401`, `404`, or `500`. |
 | `nirog-storybook` | `main` and `next` at `c13108ae45f` | The incident history, architecture decisions, implementation plans, and this handoff are documented in the canonical repository and deployment branch. |
@@ -30,7 +30,7 @@ The current slice establishes a secure identity and profile-authority foundation
 | Team creation | API implemented | An authenticated account can create a collaboration team and becomes its team owner. |
 | Team invitations and member onboarding | Not exposed yet | Supporting tables and repository methods exist, but safe create/accept endpoints and invitation delivery are deferred. |
 | Platform staff administration | Not implemented | There is no global `platform_admin` role model or endpoint in Core today. |
-| Clerk lifecycle webhooks | Receiving boundary implemented; operational setup pending | The public `/api/v1/integrations/clerk/webhooks` route preserves raw payload bytes, verifies the Svix signature with Clerk’s supported verifier, records supported lifecycle deliveries idempotently, and emits audit/outbox evidence. Railway still needs `CLERK_WEBHOOK_SIGNING_SECRET`, and Clerk Dashboard needs the deployed endpoint plus the selected `user.*` events. |
+| Clerk lifecycle webhooks | Development activation verified | The public `/api/v1/integrations/clerk/webhooks` route preserves raw payload bytes, verifies the Svix signature with Clerk’s supported verifier, records supported lifecycle deliveries idempotently, and emits audit/outbox evidence. The Nirog Development endpoint subscribes only to `user.created`, `user.updated`, and `user.deleted`; its protected Railway signing secret is active, and a real `user.created` delivery received HTTP `202` from Core. |
 | Device, consent, medicine, prescription, and OCR workflows | Not implemented as public product slices | The architecture and schema direction exist; their product routes and worker flows are still future work. |
 
 ## 3. Roles that exist today
@@ -94,13 +94,10 @@ Clerk Organization roles may be used later as a sign-in and navigation convenien
 
 The immediate technical order protects identity and authorization before the medication/OCR product surface grows.
 
-1. **Add live PostgreSQL integration coverage.** Run migrations against a real disposable PostgreSQL database and test RLS owner/grantee isolation, JIT projection privileges, native transaction context, outbox atomicity, and migration repeatability.
-2. **Implement Clerk Svix webhook ingestion.** Verify signatures, record provider-event idempotency, synchronize benign lifecycle information, and deactivate/revoke safely on lifecycle events.
-3. **Configure and verify Clerk delivery.** Set the Railway signing secret, add the deployed Core endpoint in Clerk Dashboard, select `user.created`, `user.updated`, and `user.deleted`, then use Clerk’s test delivery and replay tools. Add dispatcher consumers only after the receiving boundary is observed safely in production.
-4. **Implement directed team invitations.** Add create, accept, decline, cancel, and expiry operations; require recipient confirmation; issue auditable membership changes without granting patient data.
-5. **Implement consent and device lifecycle.** Capture and revoke sharing consent explicitly; add device registration, encrypted push-token handling, and session/device revocation.
-6. **Implement the dedicated platform-administration slice.** Add the separate platform-role model, bootstrap procedure, operational APIs, audit/outbox events, and no-clinical-access-by-default policy described above.
-7. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts only after the user/access release boundary is complete.
+1. **Implement directed team invitations.** Add create, accept, decline, cancel, and expiry operations; require recipient confirmation; issue auditable membership changes without granting patient data.
+2. **Implement consent and device lifecycle.** Capture and revoke sharing consent explicitly; add device registration, encrypted push-token handling, and session/device revocation.
+3. **Implement the dedicated platform-administration slice.** Add the separate platform-role model, bootstrap procedure, operational APIs, audit/outbox events, and no-clinical-access-by-default policy described above.
+4. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts only after the user/access release boundary is complete.
 
 This order keeps clinical and ML workloads from depending on incomplete human-access controls. The existing outbox and dispatcher architecture can then carry OCR job references and notification work without letting an ML worker become a patient-data authority.[5]
 

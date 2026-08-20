@@ -1,0 +1,35 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const authorityPlanes = `flowchart TD
+  Platform[Platform operations roles] --> NoClinical[No default patient-data access]
+  Workforce[Workforce editorial roles] --> NoClinical
+  Team[Team owner admin member] --> NoClinical
+  Profile[Profile owner caregiver curator viewer] --> Clinical[Persisted profile-specific authority]
+  Profile --> RLS[Native Drizzle transaction and PostgreSQL RLS]
+  Clerk[Verified Clerk identity] --> Account[Local Nirog account]
+  Account --> Profile`;
+
+<Meta title="Nirog / 08 Implementation Inception / 07 Current State and Access Setup" />
+
+# Current Project State and Access Setup
+
+The Core account path is now live end to end. The active Railway revision verifies the Clerk session, creates or reads the local account projection, opens a native Drizzle transaction with local RLS context, and returns the account record to the signed-in Web companion. A repeated **Refresh record** completed successfully with the verified empty-profile state and account preferences.
+
+## What is ready
+
+`nirog-core` provides the current authenticated account, preferences, patient-profile, delegated profile-grant, and team-creation API slice. The current permission templates are `owner`, `caregiver`, `curator`, and `viewer`. Team records also support `owner`, `admin`, and `member`, but team membership does not grant patient-data access.
+
+<MermaidDiagram title="Separate authority planes" chart={authorityPlanes} />
+
+## Do not use one generic admin role
+
+Nirog does **not** have a deployed `platform_admin` authority model today. A Clerk dashboard role, a team role, or a Strapi editor role must not be interpreted as clinical/profile authority. The current safe approach is to let a person sign in for a local account, create a profile for ownership, and use an explicit profile grant for a trusted caregiver, curator, or viewer.
+
+Do not manually add team members or platform administrators directly in the database. Team invitation endpoints and the separate platform-administration model are intentionally pending so membership, account roles, audit, idempotency, and revocation can be implemented together.
+
+## Recommended next work
+
+The recommended order is: live PostgreSQL/RLS integration tests; Clerk Svix webhook ingestion; directed team invitations; device and consent management; a dedicated platform-admin assignment model; then medicine, prescription, and OCR workflows. This keeps human-access controls complete before clinically sensitive product domains expand.
+
+The detailed [project-state and access-setup handoff](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/13-current-project-state-and-access-setup.md) records the current repository heads, role boundaries, supported setup actions, and the proposed four-plane administrator model.

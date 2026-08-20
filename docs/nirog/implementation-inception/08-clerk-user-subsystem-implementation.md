@@ -50,7 +50,7 @@ The implementation separates framework boundaries from domain and persistence ru
 | `@nirog/auth` | Framework-independent `ClerkRequestVerifier` port and strict `bearerToken()` parsing. |
 | `@nirog/user-domain` | Typed principal, repository/event-writer ports, and commands for projection, preferences, profiles, grants, and teams. |
 | `@nirog/access` | Permission registry, role templates, persisted permission snapshot capability evaluator, and future `PolicyEvaluator` PBAC seam. |
-| `@nirog/db` | Drizzle tables, `createScopedDatabase()`, transaction-local RLS context, JIT account helper, user repository, and event writer. |
+| `@nirog/db` | Drizzle tables, native transaction-scoped RLS context, JIT account helper, user repository, and event writer. |
 | API application | Clerk verifier adapter, global authentication hook, injectable user HTTP service, TypeBox route contracts, Fastify Swagger, and Scalar reference. |
 | PostgreSQL migration | `0001_clerk_user_subsystem.sql`, including identity/platform records, indexes, RLS policies, and the security-definer account function. |
 
@@ -90,18 +90,18 @@ flowchart TD
     Team[Team membership] -. never grants .-> Deny
 ```
 
-The database enforces a partial unique index for one active grant per `(profile_id, grantee_account_id)`. A team owner, team administrator, or team member is not automatically a profile grantee. Commands run through `withRequestContext()` / `createScopedDatabase()` with local `app.account_id`, `app.profile_id`, `app.purpose`, and workload values so PostgreSQL RLS remains a second authorization barrier.
+The database enforces a partial unique index for one active grant per `(profile_id, grantee_account_id)`. A team owner, team administrator, or team member is not automatically a profile grantee. Commands run through `withRequestContext()`, which opens a native Drizzle transaction, applies local `app.account_id`, `app.profile_id`, `app.purpose`, and workload values with `set_config(...)`, and passes that same transaction to repositories and the event writer. PostgreSQL RLS therefore remains a second authorization barrier without reconstructing a database client around a raw driver transaction.
 
 ## Verification evidence
 
-`pnpm verify` and `pnpm openapi:write` completed successfully after the implementation. The Vitest suite currently has **9 passing tests across 4 files**.
+After the live persistence correction, `pnpm lint`, `pnpm typecheck`, and `pnpm test` completed successfully with **30 passing tests across 9 files**. The authenticated Nirog Web account refresh was also verified against the active Railway API deployment.
 
 | Test area | Verified behavior |
 |---|---|
 | Persisted RBAC capability | An allowed snapshot permission is accepted; a missing permission is rejected. |
 | Persisted-grant evaluator | A current grant permits `profile.read`; a revoked grant returns `GRANT_INACTIVE`. |
 | Clerk boundary | Bearer parsing is strict, and absent server/JWT verification configuration fails closed. |
-| API behavior | Anonymous `/me` is rejected with `401`; a dependency-injected verified principal produces the typed local account view. |
+| API behavior | Anonymous `/me` is rejected with `401`; a dependency-injected verified principal produces the typed local account view; the live Web bridge now retrieves the signed-in account projection successfully. |
 | Idempotency and profile command | A mutation without `Idempotency-Key` fails with the declared client error; a keyed profile creation succeeds. |
 | Generated contract | The OpenAPI document exposes bearer security on the server-relative `/me` operation. |
 
@@ -121,6 +121,12 @@ The physical tables and domain seams exist, but the following route slices are i
 
 These are the remaining parts of the user-domain release boundary. The next product-domain slice—prescription/OCR—should begin only after this pending user-domain work is explicitly requested and completed.
 
+## Current access-administration position
+
+The implemented roles are **patient-profile roles**, not global platform-administrator roles. A profile owner can grant `caregiver`, `curator`, or `viewer` access through the protected profile-grant contract; the role is converted into a persisted permission snapshot at grant time. A created team has `owner`, `admin`, and `member` membership records, but team membership intentionally has no patient-data authority and invitation routes are still deferred. There is no implemented `platform_admin` assignment or staff-administration API yet, so neither a Clerk Organization role nor a direct database edit should be presented as Core clinical authority.
+
+The recommended next access slice is the documented [current project-state and access-setup handoff](13-current-project-state-and-access-setup.md), which separates platform administration, workforce/editorial access, team collaboration, and patient-care delegation before any global-admin feature is added.
+
 ## References
 
 [1] [Approved Clerk user-subsystem design](07-clerk-user-subsystem-design.md)
@@ -130,3 +136,5 @@ These are the remaining parts of the user-domain release boundary. The next prod
 [3] [Clerk webhook synchronization guidance](https://clerk.com/docs/guides/development/webhooks/syncing)
 
 [4] [Nirog user-domain routes and generated OpenAPI contract](https://github.com/Paradox-Tech-BD/nirog-core/tree/main)
+
+[5] [Current project state and access-setup handoff](13-current-project-state-and-access-setup.md)

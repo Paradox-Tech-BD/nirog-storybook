@@ -23,7 +23,7 @@ export const requestPath = `sequenceDiagram
 
 export const authorizationPath = `flowchart TD
   Principal[Verified Clerk principal] --> Account[Local account projection]
-  Account --> Scope[Scoped DB transaction]
+  Account --> Scope[Native Drizzle RLS transaction]
   Scope --> Owner{Profile owner?}
   Owner -- yes --> Allow[Implicit owner capability]
   Owner -- no --> Grant{Live grant snapshot?}
@@ -57,10 +57,12 @@ Team collaboration remains deliberately non-clinical: team membership **never** 
 
 ## Verification
 
-The repository’s `pnpm verify` and OpenAPI writer pass with **9 tests across 4 test files**. The test matrix confirms anonymous rejection, dependency-injected verified principal flow, idempotency enforcement, generated bearer security metadata, fail-closed Clerk configuration, persisted permission decisions, and revoked-grant denial.
+The repository’s current lint, type-check, and test suite passes with **30 tests across 9 test files**. The live Nirog Web bridge has also loaded and refreshed the verified signed-in account record against the active Railway Core API. The test matrix confirms anonymous rejection, dependency-injected verified principal flow, idempotency enforcement, generated bearer security metadata, fail-closed Clerk configuration, persisted permission decisions, revoked-grant denial, and native request-transaction context behavior.
 
 ## Deliberately pending endpoints
 
 The remaining user-subsystem boundary includes team invitation lifecycle routes, signed Clerk/Svix webhook ingestion, device registration, consent-management routes, and PostgreSQL integration tests for RLS, security-definer privileges, and transactional audit/outbox behavior. These remain visible as explicit next work rather than being represented as delivered capability.
 
 Read the full [verified implementation record](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/08-clerk-user-subsystem-implementation.md) and the [approved Clerk user-subsystem design](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/07-clerk-user-subsystem-design.md).
+
+Read the [current project-state and access-setup handoff](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/13-current-project-state-and-access-setup.md) before adding any platform-administrator capability.

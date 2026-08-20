@@ -33,6 +33,7 @@ This library turns the approved Nirog architecture into an executable starting p
 | 11 | [10 — Feature-Sliced HTTP Platform](10-feature-sliced-http-platform.md) | Reviewing focused user modules, common response/error semantics, generated Scalar/OpenAPI, and user-aware rate limits. |
 | 12 | [11 — Cloudflare R2 Evidence Storage](11-cloudflare-r2-evidence-storage.md) | Configuring private evidence objects through R2 while preserving the separate SQS worker transport. |
 | 13 | [12 — Railway PostgreSQL Outbox Deployment](12-railway-postgresql-outbox-deployment.md) | Deploying Core API and dispatcher services on Railway with PostgreSQL leases, retries, and Cloudflare R2 evidence storage. |
+| 14 | [13 — Current Project State and Access Setup](13-current-project-state-and-access-setup.md) | Understanding the deployed baseline, remaining release order, and safe separation between platform, team, and patient-care roles. |
 
 The [research notes](research-notes.md) preserve the evidence behind the technology and Strapi decision.
 

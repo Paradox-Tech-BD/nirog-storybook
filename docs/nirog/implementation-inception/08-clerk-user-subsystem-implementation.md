@@ -48,7 +48,7 @@ The implementation separates framework boundaries from domain and persistence ru
 | Layer | Implemented responsibility |
 |---|---|
 | `@nirog/auth` | Framework-independent `ClerkRequestVerifier` port and strict `bearerToken()` parsing. |
-| `@nirog/user-domain` | Typed principal, repository/event-writer ports, and commands for projection, preferences, profiles, grants, teams, and directed team invitations. |
+| `@nirog/user-domain` | Typed principal, repository/event-writer ports, and commands for projection, preferences, profiles, grants, teams, directed invitations, device lifecycle, and consent lifecycle. |
 | `@nirog/access` | Permission registry, role templates, persisted permission snapshot capability evaluator, and future `PolicyEvaluator` PBAC seam. |
 | `@nirog/db` | Drizzle tables, native transaction-scoped RLS context, JIT account helper, user repository, and event writer. |
 | API application | Clerk verifier adapter, global authentication hook, injectable user HTTP service, TypeBox route contracts, Fastify Swagger, and Scalar reference. |
@@ -75,6 +75,10 @@ The generated OpenAPI server declares `/api/v1` as its base URL. Consequently, t
 | `POST /api/v1/teams/:teamId/invitations/:invitationId/accept` | The direct recipient alone accepts a pending, unexpired invitation with an `Idempotency-Key`; membership changes are transactional and non-clinical. |
 | `POST /api/v1/teams/:teamId/invitations/:invitationId/decline` | The direct recipient alone declines a pending, unexpired invitation with an `Idempotency-Key`. |
 | `DELETE /api/v1/teams/:teamId/invitations/:invitationId` | An active team owner or administrator cancels a pending invitation with an `Idempotency-Key`. |
+| `POST /api/v1/devices` | Requires the current account and an `Idempotency-Key`; hashes the supplied device fingerprint and optional push token before persistence, then returns only safe device lifecycle fields. |
+| `DELETE /api/v1/devices/:deviceId` | Requires the current account and an `Idempotency-Key`; revokes only an active device owned by that account. |
+| `POST /api/v1/profiles/:profileId/consents` | Requires the profile owner and an `Idempotency-Key`; records a `data-sharing`, `research`, or `marketing` consent in the active profile/account RLS context. |
+| `DELETE /api/v1/profiles/:profileId/consents/:consentId` | Requires the profile owner and an `Idempotency-Key`; withdraws only an active consent for that owner/profile context. |
 
 ## Authorization and persistence invariants
 
@@ -98,7 +102,7 @@ The database enforces a partial unique index for one active grant per `(profile_
 
 ## Verification evidence
 
-After the invitation release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` completed successfully with **36 passing tests across 12 files** (database-dependent tests are skipped only when no disposable PostgreSQL service is supplied). GitHub Actions then passed its unit and disposable PostgreSQL/RLS jobs, which apply the forward team-invitation and team-capability migrations. The authenticated Nirog Web account refresh was also verified against the active Railway API deployment.
+After the consent/device release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` completed successfully with **37 passing tests across 12 files** (database-dependent tests are skipped only when no disposable PostgreSQL service is supplied). GitHub Actions then passed its unit and disposable PostgreSQL/RLS jobs for Core commit `768185e`; the integration job applies the `0006_consent_device_rls.sql` forward migration and asserts account-self device control plus profile-owner consent writes. Railway completed the migrator deployment before the matching API deployment became active, and `GET https://nirog.up.railway.app/api/v1/health/live` returned HTTP `200`.
 
 | Test area | Verified behavior |
 |---|---|
@@ -109,6 +113,8 @@ After the invitation release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `p
 | Idempotency and profile command | A mutation without `Idempotency-Key` fails with the declared client error; a keyed profile creation succeeds. |
 | Generated contract | The OpenAPI document exposes bearer security on the server-relative `/me` operation and the new typed invitation lifecycle routes. |
 | Team invitation RLS | Owners/admins have the intended bounded management paths, only the direct recipient can respond, and team membership does not reveal a patient profile. |
+| Device lifecycle | The HTTP contract requires idempotency, omits token/fingerprint material from responses, and the PostgreSQL check proves an unrelated account cannot revoke another account’s device. |
+| Consent lifecycle | The purpose allowlist is typed, profile ownership is enforced both in the application command and RLS policy, and the PostgreSQL check proves owner creation/withdrawal while rejecting an unrelated writer. |
 
 The current suite uses dependency injection for the verifier and HTTP service, so it makes no real Clerk network request and does not require private credentials. Docker and live-PostgreSQL integration validation remain outside this sandbox because a Docker daemon is unavailable.
 
@@ -119,8 +125,7 @@ The physical tables and domain seams exist, but the following route slices are i
 | Deferred slice | Required implementation outcome |
 |---|---|
 | Clerk lifecycle event processing | The public Svix-signed receiving endpoint is implemented with replay-safe provider-event recording and audit/outbox evidence. Safe deactivation, device revocation, active-grant revocation, and dispatcher consumers remain separate lifecycle-processing work. |
-| Device management | Registered Flutter device lifecycle, encrypted push-token handling, and revocation endpoints. |
-| Consent management | Explicit consent capture/revocation records and command endpoints, later connected to policy decisions. |
+| Consent-governed policy decisions | The deployed consent record is auditable and purpose-bound, but no profile grant or clinical read path is currently widened from a consent alone. Future PBAC rules may consume the record explicitly. |
 | Live database integration | Migration execution, SQL function privileges, RLS owner/grantee isolation, transaction scope, outbox atomicity, and webhook replay tests against PostgreSQL. |
 
 These are the remaining parts of the user-domain release boundary. The next product-domain slice—prescription/OCR—should begin only after this pending user-domain work is explicitly requested and completed.

@@ -9,11 +9,11 @@
 
 | Repository or runtime | Current state | What it proves |
 |---|---|---|
-| `nirog-core` | `main` at `43e6ec9` | Fastify, TypeBox, Drizzle, PostgreSQL RLS, Clerk verification, account projection, profile grants, team creation, Scalar/OpenAPI, rate limits, R2 adapter, outbox dispatcher contracts, the native request-transaction correction, the forward RLS recursion repair, and the Clerk webhook receiving boundary are implemented. |
-| Railway Core API | Online with `43e6ec9` active | An authenticated request crosses the Web bridge, Clerk verifier, JIT account projection, RLS context, and Drizzle repository path successfully; the configured Clerk Development endpoint also reaches the signed webhook receiver. |
+| `nirog-core` | `main` at `768185e` | Fastify, TypeBox, Drizzle, PostgreSQL RLS, Clerk verification, account projection, profile grants, teams, directed invitations, device lifecycle, consent lifecycle, Scalar/OpenAPI, rate limits, R2 adapter, and outbox dispatcher contracts are implemented. |
+| Railway Core API | Online with `768185e` active | The migration service completed first, then the matching API revision became active. Public liveness returned HTTP `200`; verified Clerk account projection and signed webhook receiving remain available. |
 | `nirog-web` | `main` at `3ac4be0` | The Next.js bridge normalizes the Core API base to `/api/v1`, forwards the current Clerk session token, and renders the current account result. |
 | Live Nirog Web | Verified with the preserved signed-in session | Repeated `Refresh record` requests render the verified empty-profile state, preferences, and a correlation ID rather than `401`, `404`, or `500`. |
-| `nirog-storybook` | `main` and `next` at `c13108ae45f` | The incident history, architecture decisions, implementation plans, and this handoff are documented in the canonical repository and deployment branch. |
+| `nirog-storybook` | Canonical `main` and deployment `next` | The incident history, architecture decisions, implementation plans, and this handoff are documented in the canonical repository and deployment branch. |
 
 The live empty-profile message is expected for the tested user: the authenticated account projection and default preferences exist, while no patient profile has yet been created. It is not an error condition.
 
@@ -31,7 +31,9 @@ The current slice establishes a secure identity and profile-authority foundation
 | Team invitations and member onboarding | API implemented and deployed | Direct-account invitations support create, accept, decline, cancel, idempotency, default/maximum expiry, audit/outbox evidence, and PostgreSQL RLS enforcement. A team role remains non-clinical. |
 | Platform staff administration | Not implemented | There is no global `platform_admin` role model or endpoint in Core today. |
 | Clerk lifecycle webhooks | Development activation verified | The public `/api/v1/integrations/clerk/webhooks` route preserves raw payload bytes, verifies the Svix signature with Clerk’s supported verifier, records supported lifecycle deliveries idempotently, and emits audit/outbox evidence. The Nirog Development endpoint subscribes only to `user.created`, `user.updated`, and `user.deleted`; its protected Railway signing secret is active, and a real `user.created` delivery received HTTP `202` from Core. |
-| Device, consent, medicine, prescription, and OCR workflows | Not implemented as public product slices | The architecture and schema direction exist; their product routes and worker flows are still future work. |
+| Device lifecycle | API implemented and deployed | An authenticated account may register/reactivate an `ios`, `android`, or `web` device and revoke only its own active device. Device fingerprints and optional push tokens are SHA-256 hashed before persistence and never appear in API responses, audit metadata, or outbox payloads. |
+| Consent lifecycle | API implemented and deployed | Only the profile owner may create or withdraw an active, purpose-bound consent for `data-sharing`, `research`, or `marketing`. The action is bound to the active profile/account RLS context and emits audit/outbox evidence. |
+| Medicine, prescription, and OCR workflows | Not implemented as public product slices | The architecture and schema direction exist; their product routes and worker flows are still future work. |
 
 ## 3. Roles that exist today
 
@@ -69,6 +71,8 @@ The following current workflow is safe and supported by the present implementati
 | Let a trusted person help with one profile | Use the profile-owner grant flow with `caregiver`, `curator`, or `viewer` after the recipient has a local account. | The grant must be created through the authorized API and should include a stated purpose and, where appropriate, expiry. |
 | Create a collaboration workspace | Create a team through `POST /api/v1/teams` using an idempotency key. | The creator is team owner, but team membership does not grant patient-data access. |
 | Add a team administrator or member | Use `POST /api/v1/teams/:teamId/invitations` with an idempotency key and the recipient’s local account ID. The recipient uses the dedicated accept or decline route. | A team owner may invite `admin` or `member`; a team admin may invite only `member`. Do not perform manual database edits or infer membership from a Clerk Organization. |
+| Register or revoke a device | Use `POST /api/v1/devices` or `DELETE /api/v1/devices/:deviceId` with an idempotency key. | The authenticated account controls only its own devices. Send a client fingerprint and optional push token only over the authenticated API; Core stores SHA-256 digests, never raw token material. |
+| Record or withdraw consent | As the profile owner, use `POST /api/v1/profiles/:profileId/consents` or `DELETE /api/v1/profiles/:profileId/consents/:consentId` with an idempotency key. | Valid purposes are `data-sharing`, `research`, and `marketing`. A consent record does not create a profile grant or patient-data access by itself. |
 | Make a platform administrator | Do not assign one in Core yet. Implement the dedicated platform-admin slice below first. | A global admin must remain distinct from clinical/profile authority. |
 
 The current Web companion confirms account projection and empty-profile state. It does not yet provide a full administrative console for profile grants, teams, invitations, or staff. Use Scalar’s documented invitation routes only for controlled test operations until the Web companion exposes these flows; do not bypass Core with direct database changes.[3]
@@ -94,9 +98,8 @@ Clerk Organization roles may be used later as a sign-in and navigation convenien
 
 The immediate technical order protects identity and authorization before the medication/OCR product surface grows.
 
-1. **Implement consent and device lifecycle.** Capture and revoke sharing consent explicitly; add device registration, encrypted push-token handling, and session/device revocation.
-2. **Implement the dedicated platform-administration slice.** Add the separate platform-role model, bootstrap procedure, operational APIs, audit/outbox events, and no-clinical-access-by-default policy described above.
-3. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts only after the user/access release boundary is complete.
+1. **Implement the dedicated platform-administration slice.** Add the separate platform-role model, bootstrap procedure, operational APIs, audit/outbox events, and no-clinical-access-by-default policy described above.
+2. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts only after the user/access release boundary is complete.
 
 This order keeps clinical and ML workloads from depending on incomplete human-access controls. The existing outbox and dispatcher architecture can then carry OCR job references and notification work without letting an ML worker become a patient-data authority.[5]
 

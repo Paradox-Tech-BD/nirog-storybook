@@ -11,6 +11,8 @@ Nirog uses **Cloudflare R2** for private evidence objects. The application uses 
 
 R2 provides an S3-compatible endpoint at `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`; the S3 client region is `auto` (with `us-east-1` accepted only as an interoperability alias by R2, not by Nirog’s configuration policy). [1] R2 credentials are an Access Key ID and Secret Access Key created from a bucket-scoped R2 API token. [2]
 
+> **Endpoint rule:** `EVIDENCE_R2_ENDPOINT` is the account-specific R2 S3 API endpoint. It is not an R2 custom/public domain such as `https://storage.example.com`; Cloudflare presigned URLs work only against the S3 API domain. [3]
+
 ## Architecture boundary
 
 ```mermaid
@@ -63,6 +65,8 @@ Local Compose deliberately defaults to `EVIDENCE_STORAGE_DRIVER=disabled`. This 
 Create one **private** R2 bucket—for example `nirog-evidence`—and create an R2 API token with **Object Read & Write** permission limited to that bucket. Do not use an account-wide administrator token for the Core runtime. Cloudflare’s R2 token model supports scoping Object Read & Write and Object Read credentials to a selected bucket. [2]
 
 Store the R2 Access Key ID and Secret Access Key only in the backend secret manager or the untracked `.env.local` file. They must never appear in Flutter, Next.js `NEXT_PUBLIC_*` variables, Storybook, Git, browser storage, queue messages, or outbox payloads.
+
+Any credential pasted into chat, a ticket, a commit, a screenshot, or an unsealed log must be considered exposed: revoke or rotate it at its provider, replace the sealed Railway variable, and redeploy the affected service. Do not reuse it as a saved application secret.
 
 ```env
 # Production backend: R2 evidence objects

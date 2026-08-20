@@ -86,6 +86,9 @@ The generated OpenAPI server declares `/api/v1` as its base URL. Consequently, t
 | `POST /api/v1/profiles/:profileId/prescriptions` | Requires `regimen.write` and an `Idempotency-Key`; creates only a manual prescription context, without evidence or OCR input. |
 | `POST /api/v1/profiles/:profileId/regimens` | Requires `regimen.write` and an `Idempotency-Key`; creates a manual regimen and validated local-time schedules inside the profile RLS transaction. |
 | `POST /api/v1/profiles/:profileId/regimens/:regimenId/dose-logs` | Requires `adherence.write` and an `Idempotency-Key`; blocks cross-profile regimen references before appending a dose outcome. |
+| `GET /api/v1/profiles/:profileId/prescriptions/:prescriptionId/evidence` | Requires profile ownership or `document.read_metadata`; lists safe evidence lifecycle metadata only and never returns an object key, R2 URL, image bytes, OCR text, or model result. |
+| `POST /api/v1/profiles/:profileId/prescriptions/:prescriptionId/evidence/uploads` | Requires `document.create` and an `Idempotency-Key`; creates a profile-bound evidence record and returns a short-lived upload authorization for an allowlisted image/PDF type. |
+| `POST /api/v1/profiles/:profileId/prescriptions/:prescriptionId/evidence/:evidenceId/complete` | Requires `document.create` and an `Idempotency-Key`; validates the profile/prescription/evidence chain, creates one OCR job, and atomically emits an identifier-only outbox event. |
 
 ## Authorization and persistence invariants
 
@@ -111,6 +114,8 @@ The database enforces a partial unique index for one active grant per `(profile_
 
 After the manual medication release, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` completed successfully with **38 passing tests and 7 environment-dependent PostgreSQL cases skipped locally**. GitHub Actions run `32364153819` passed both unit and disposable PostgreSQL/RLS jobs for Core commit `2acf528`; the clinical integration coverage applies `0008_manual_medication.sql` and proves an unrelated account cannot read a regimen selected through another profile context or write across profile boundaries. Railway completed the `0008` migrator deployment before the matching API deployment became active, and `GET https://nirog.up.railway.app/api/v1/health/live` returned HTTP `200`.
 
+The Phase 8 evidence foundation then completed `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm openapi:write` with **40 passing tests and 8 environment-dependent PostgreSQL cases skipped locally**. GitHub Actions run `32371786274` passed for Core commit `d6d5505`. The new disposable PostgreSQL/RLS assertion proves prescription evidence is invisible under an unrelated account/profile context and rejects a cross-profile evidence reference. Railway completed `0009_prescription_evidence_ocr.sql` through the migrator before activating the matching API revision; public liveness returned HTTP `200`. Production R2 evidence processing now fails closed without the masked `NIROG_INTERNAL_WORKER_SECRET` runtime setting.
+
 | Test area | Verified behavior |
 |---|---|
 | Persisted RBAC capability | An allowed snapshot permission is accepted; a missing permission is rejected. |
@@ -124,6 +129,7 @@ After the manual medication release, `pnpm lint`, `pnpm typecheck`, `pnpm test`,
 | Consent lifecycle | The purpose allowlist is typed, profile ownership is enforced both in the application command and RLS policy, and the PostgreSQL check proves owner creation/withdrawal while rejecting an unrelated writer. |
 | Platform-role isolation | The active-admin predicate and platform assignment RLS policy govern only the separate assignment table. An active `platform_admin` still receives no unrelated patient-profile visibility. |
 | Manual medication | Regimen creation requires idempotency and emits only safe identifiers in audit/outbox records. A manually logged dose outcome is profile-constrained, and the database RLS suite rejects a cross-profile clinical write. |
+| Evidence foundation | The upload contract rejects a missing idempotency key, returns only safe lifecycle metadata plus a short-lived upload authorization, and completion produces an OCR-job identifier without exposing a storage key. The RLS suite rejects mismatched profile evidence access. |
 
 The current suite uses dependency injection for the verifier and HTTP service, so it makes no real Clerk network request and does not require private credentials. Docker and live-PostgreSQL integration validation remain outside this sandbox because a Docker daemon is unavailable.
 
@@ -143,7 +149,7 @@ These are the remaining parts of the user-domain release boundary. The next prod
 
 The implemented roles include **patient-profile roles** and a separate non-clinical platform-role plane. A profile owner can grant `caregiver`, `curator`, or `viewer` access through the protected profile-grant contract; the role is converted into a persisted permission snapshot at grant time. Team `owner`, `admin`, and `member` records remain non-clinical. Platform `platform_admin`, `support_agent`, and `security_auditor` records are equally non-clinical: neither a platform role, Clerk Organization role, nor direct database edit is Core clinical authority.
 
-The deployed follow-on product slice is manual medication entry: Core commit `2acf528` adds profile-scoped manual prescriptions, regimens, schedules, and dose outcomes using the existing persisted `regimen.*` and `adherence.*` permissions. Platform roles remain non-clinical. The next work is the documented [current project-state and access-setup handoff](13-current-project-state-and-access-setup.md) Phase 8 evidence/OCR boundary, which must preserve the separation between platform administration, workforce/editorial activity, team collaboration, and patient-care delegation.
+The deployed follow-on product slices are manual medication entry and the evidence foundation. Core commit `2acf528` adds profile-scoped manual prescriptions, regimens, schedules, and dose outcomes using the existing persisted `regimen.*` and `adherence.*` permissions. Core commit `d6d5505` adds profile-scoped evidence metadata, constrained R2 upload authorization, and identifier-only OCR-job dispatch using `document.*` permissions. Platform roles remain non-clinical. The next work is the documented [current project-state and access-setup handoff](13-current-project-state-and-access-setup.md) worker lease/result and review boundary, which must preserve the separation between platform administration, workforce/editorial activity, team collaboration, and patient-care delegation.
 
 ## References
 

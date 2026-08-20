@@ -30,7 +30,7 @@ The current slice establishes a secure identity and profile-authority foundation
 | Team creation | API implemented | An authenticated account can create a collaboration team and becomes its team owner. |
 | Team invitations and member onboarding | Not exposed yet | Supporting tables and repository methods exist, but safe create/accept endpoints and invitation delivery are deferred. |
 | Platform staff administration | Not implemented | There is no global `platform_admin` role model or endpoint in Core today. |
-| Clerk lifecycle webhooks | Not implemented | Svix-signed, replay-safe user lifecycle synchronization is the next identity hardening slice. |
+| Clerk lifecycle webhooks | Receiving boundary implemented; operational setup pending | The public `/api/v1/integrations/clerk/webhooks` route preserves raw payload bytes, verifies the Svix signature with Clerk’s supported verifier, records supported lifecycle deliveries idempotently, and emits audit/outbox evidence. Railway still needs `CLERK_WEBHOOK_SIGNING_SECRET`, and Clerk Dashboard needs the deployed endpoint plus the selected `user.*` events. |
 | Device, consent, medicine, prescription, and OCR workflows | Not implemented as public product slices | The architecture and schema direction exist; their product routes and worker flows are still future work. |
 
 ## 3. Roles that exist today
@@ -96,10 +96,11 @@ The immediate technical order protects identity and authorization before the med
 
 1. **Add live PostgreSQL integration coverage.** Run migrations against a real disposable PostgreSQL database and test RLS owner/grantee isolation, JIT projection privileges, native transaction context, outbox atomicity, and migration repeatability.
 2. **Implement Clerk Svix webhook ingestion.** Verify signatures, record provider-event idempotency, synchronize benign lifecycle information, and deactivate/revoke safely on lifecycle events.
-3. **Implement directed team invitations.** Add create, accept, decline, cancel, and expiry operations; require recipient confirmation; issue auditable membership changes without granting patient data.
-4. **Implement consent and device lifecycle.** Capture and revoke sharing consent explicitly; add device registration, encrypted push-token handling, and session/device revocation.
-5. **Implement the dedicated platform-administration slice.** Add the separate platform-role model, bootstrap procedure, operational APIs, audit/outbox events, and no-clinical-access-by-default policy described above.
-6. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts only after the user/access release boundary is complete.
+3. **Configure and verify Clerk delivery.** Set the Railway signing secret, add the deployed Core endpoint in Clerk Dashboard, select `user.created`, `user.updated`, and `user.deleted`, then use Clerk’s test delivery and replay tools. Add dispatcher consumers only after the receiving boundary is observed safely in production.
+4. **Implement directed team invitations.** Add create, accept, decline, cancel, and expiry operations; require recipient confirmation; issue auditable membership changes without granting patient data.
+5. **Implement consent and device lifecycle.** Capture and revoke sharing consent explicitly; add device registration, encrypted push-token handling, and session/device revocation.
+6. **Implement the dedicated platform-administration slice.** Add the separate platform-role model, bootstrap procedure, operational APIs, audit/outbox events, and no-clinical-access-by-default policy described above.
+7. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts only after the user/access release boundary is complete.
 
 This order keeps clinical and ML workloads from depending on incomplete human-access controls. The existing outbox and dispatcher architecture can then carry OCR job references and notification work without letting an ML worker become a patient-data authority.[5]
 

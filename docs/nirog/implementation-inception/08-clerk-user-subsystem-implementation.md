@@ -114,7 +114,7 @@ The physical tables and domain seams exist, but the following route slices are i
 | Deferred slice | Required implementation outcome |
 |---|---|
 | Team invitations | Idempotent create and directed acceptance routes; expiry/one-time token checks; membership creation in the acceptance transaction. |
-| Clerk lifecycle webhooks | Public-to-bearer but Svix-signed endpoint; replay-safe provider-event recording; safe account deactivation, device and active-grant revocation, audit/outbox evidence. |
+| Clerk lifecycle event processing | The public Svix-signed receiving endpoint is implemented with replay-safe provider-event recording and audit/outbox evidence. Safe deactivation, device revocation, active-grant revocation, and dispatcher consumers remain separate lifecycle-processing work. |
 | Device management | Registered Flutter device lifecycle, encrypted push-token handling, and revocation endpoints. |
 | Consent management | Explicit consent capture/revocation records and command endpoints, later connected to policy decisions. |
 | Live database integration | Migration execution, SQL function privileges, RLS owner/grantee isolation, transaction scope, outbox atomicity, and webhook replay tests against PostgreSQL. |

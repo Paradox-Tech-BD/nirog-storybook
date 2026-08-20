@@ -61,7 +61,7 @@ The repository’s current lint, type-check, and test suite passes with **30 tes
 
 ## Deliberately pending endpoints
 
-The remaining user-subsystem boundary includes team invitation lifecycle routes, signed Clerk/Svix webhook ingestion, device registration, consent-management routes, and PostgreSQL integration tests for RLS, security-definer privileges, and transactional audit/outbox behavior. These remain visible as explicit next work rather than being represented as delivered capability.
+The remaining user-subsystem boundary includes team invitation lifecycle routes, lifecycle consumers for the signed Clerk/Svix webhook receiving endpoint, device registration, consent-management routes, and continued PostgreSQL integration coverage for RLS and transactional audit/outbox behavior. The webhook receiving route is public only for a raw-body Svix signature check; it records each supported delivery idempotently and writes audit/outbox evidence, while eventual lifecycle effects remain explicit next work.
 
 Read the full [verified implementation record](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/08-clerk-user-subsystem-implementation.md) and the [approved Clerk user-subsystem design](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/07-clerk-user-subsystem-design.md).
 

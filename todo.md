@@ -314,6 +314,10 @@ The directed invitation release is now verified and active. Core commits `99a20b
 
 The next bounded increment is consent and device lifecycle. It will expose explicit consent capture/revocation and self-service device registration/revocation over existing identity tables, keep push-token material out of audit/outbox payloads and responses, enforce profile-owner or subject authority for consent actions, and add no new clinical read/write capability.
 
-- [ ] Implement and verify the consent/device lifecycle slice with typed Core routes, RLS policies, audit/outbox evidence, disposable PostgreSQL assertions, and generated Scalar/OpenAPI documentation.
+- [x] Implement and verify the consent/device lifecycle slice with typed Core routes, RLS policies, audit/outbox evidence, disposable PostgreSQL assertions, generated Scalar/OpenAPI documentation.
+
+The next bounded increment is dedicated platform administration. It will introduce a local, auditable platform-role assignment model with explicit bootstrap and revocation controls. A platform role must not confer profile, evidence, medication, prescription, or other clinical access; exceptional access remains a separate future policy decision.
+
+- [ ] Implement and verify the platform-administration slice with separate role assignments, a bootstrap procedure, typed Core routes, audit/outbox evidence, disposable PostgreSQL assertions, and generated Scalar/OpenAPI documentation.
 
 The stack must preserve a modular FastAPI/Python monolith with explicit application/domain/port/infrastructure layers, strict Pydantic transport models and immutable command types, PostgreSQL as the canonical authority with transaction-scoped RLS defense in depth, private object storage for evidence, a Redis-compatible broker/cache, separately scaled worker pools, OIDC/OAuth2 actor resolution, current profile capability evaluation, RBAC with a future policy evaluator seam, Flutter-safe OpenAPI/change-feed contracts, transactional outbox/idempotency, and redacted end-to-end observability.

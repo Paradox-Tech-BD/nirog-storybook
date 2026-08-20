@@ -164,6 +164,12 @@ The required deployment baseline is now Railway Core API + Railway dispatcher + 
 
 The deployment review identified that an R2 custom/public domain cannot serve as `EVIDENCE_R2_ENDPOINT` for the R2 S3 adapter or presigned uploads. The configuration guard now requires the HTTPS account-specific `*.r2.cloudflarestorage.com` endpoint, and focused tests cover the rejection. A Neon pooled URL is appropriate for the persistent Railway API and dispatcher processes; use a direct Neon URL for schema migration where available. Railway Redis is available internally through its service-provided `REDIS_URL`; Cloudflare R2, Neon, Railway Redis, and Clerk secrets must be rotated after any exposure outside sealed secret storage and are never retained in Nirog source, documentation, or application configuration files.
 
+## Clerk web-to-Core bearer propagation
+
+- [x] Trace the authenticated Nirog Web Core bridge, Clerk session-token template selection, and Nirog Core verifier expectations behind the reported `401 UNAUTHENTICATED` response.
+- [x] Correct the token-template/audience/authorization-header boundary: request the normal session-bound token, and configure the Nirog audience as a Clerk session-token claim rather than a custom JWT template.
+- [ ] Verify the fixed authenticated request path and publish the Core, Web, and documentation update if required.
+
 The current implementation baseline is Node 24 with TypeScript, Fastify, TypeBox, Drizzle, and PostgreSQL RLS; a PostgreSQL transactional outbox with a separate Railway dispatcher; Cloudflare R2 private evidence storage; managed Valkey/Redis for shared rate limits; Clerk authentication; Scalar/OpenAPI contracts; Docker Compose for local development; and Railway services for deployment. Storybook MDX/Mermaid remains the human architecture hub, while Fastify-generated OpenAPI plus Scalar is the executable API documentation layer.
 
 The stack must preserve a modular FastAPI/Python monolith with explicit application/domain/port/infrastructure layers, strict Pydantic transport models and immutable command types, PostgreSQL as the canonical authority with transaction-scoped RLS defense in depth, private object storage for evidence, a Redis-compatible broker/cache, separately scaled worker pools, OIDC/OAuth2 actor resolution, current profile capability evaluation, RBAC with a future policy evaluator seam, Flutter-safe OpenAPI/change-feed contracts, transactional outbox/idempotency, and redacted end-to-end observability.

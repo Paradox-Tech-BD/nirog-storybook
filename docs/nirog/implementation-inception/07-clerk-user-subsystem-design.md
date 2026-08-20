@@ -78,6 +78,16 @@ Teams help organize caregivers or workforce relationships. `identity.teams` has 
 
 `user.created` and `user.updated` use idempotent account projection upsert. `user.deleted` moves the account to `deactivated`, revokes devices and live delegated grants, records audit/outbox evidence, and enters the privacy-retention workflow. It does not delete health records in a webhook transaction.
 
+### 3.6 Session-token contract for Nirog Web and Flutter
+
+Nirog Core's verified principal requires Clerk's `sub`, `iss`, and `sid` claims. The Web companion and Flutter therefore forward the normal, short-lived **Clerk session token** as `Authorization: Bearer <token>`. For the configured Nirog API audience, Clerk Dashboard → **Sessions** → **Customize session token** must contain the minimal static claim below:
+
+```json
+{ "aud": "nirog-mobile-api" }
+```
+
+The Web bridge must call `getToken()` without a JWT template. Clerk's custom JWT templates are appropriate for third-party tokens but deliberately omit session-bound claims such as `sid`; a template token will either fail Core's audience check when the claim is absent or, after adding the claim, fail Core's required session binding. `CLERK_AUTHORIZED_PARTIES` remains an exact allowlist for the `azp` browser origin—use `https://www.nirog.me` only when that exact origin is the user-facing domain. [2] [3] [6] [7]
+
 ## 4. Authorization and RLS
 
 The first authenticated API hook produces `ActorContext` from the verified Clerk principal and resolved local account. The profile route hook resolves a target profile ID from the path, never from an untrusted header. Command code invokes the `PolicyEvaluator` with actor, profile, permission, purpose, and resource relation. For MVP the evaluator uses owner capability or an active persisted grant. Later PBAC can add constraints without changing the grant table or handler contract.
@@ -142,3 +152,7 @@ The implementation order is fixed: first schema/migration and pure domain ports;
 [4] [Clerk webhook synchronization guidance](https://clerk.com/docs/guides/development/webhooks/syncing)
 
 [5] [Clerk webhook overview](https://clerk.com/docs/guides/development/webhooks/overview)
+
+[6] [Clerk session token claims](https://clerk.com/docs/guides/sessions/session-tokens)
+
+[7] [Clerk session token customization](https://clerk.com/docs/guides/sessions/customize-session-tokens)

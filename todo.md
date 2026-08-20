@@ -318,6 +318,11 @@ The next bounded increment is consent and device lifecycle. It will expose expli
 
 The next bounded increment is dedicated platform administration. It will introduce a local, auditable platform-role assignment model with explicit bootstrap and revocation controls. A platform role must not confer profile, evidence, medication, prescription, or other clinical access; exceptional access remains a separate future policy decision.
 
-- [ ] Implement and verify the platform-administration slice with separate role assignments, a bootstrap procedure, typed Core routes, audit/outbox evidence, disposable PostgreSQL assertions, and generated Scalar/OpenAPI documentation.
+- [x] Draft the platform-role API endpoints, authorization matrix, and explicit zero-patient-data security rules for review and generated Scalar/OpenAPI documentation.
+- [x] Implement and verify the platform-administration slice with separate role assignments, a bootstrap procedure, typed Core routes, audit/outbox evidence, disposable PostgreSQL assertions, and generated Scalar/OpenAPI documentation.
+
+The next bounded product increment is manual medication management: an explicitly profile-authorized catalog selection, prescription/regimen, dose schedule, and dose-log vertical slice. It must preserve profile-grant authority, consent/device/platform-role separation, idempotency, audit/outbox evidence, and no OCR evidence processing until the later dedicated workflow increment.
+
+- [ ] Implement and verify the manual medication vertical slice with typed Core routes, profile-scoped RLS, audit/outbox evidence, disposable PostgreSQL assertions, and generated Scalar/OpenAPI documentation.
 
 The stack must preserve a modular FastAPI/Python monolith with explicit application/domain/port/infrastructure layers, strict Pydantic transport models and immutable command types, PostgreSQL as the canonical authority with transaction-scoped RLS defense in depth, private object storage for evidence, a Redis-compatible broker/cache, separately scaled worker pools, OIDC/OAuth2 actor resolution, current profile capability evaluation, RBAC with a future policy evaluator seam, Flutter-safe OpenAPI/change-feed contracts, transactional outbox/idempotency, and redacted end-to-end observability.

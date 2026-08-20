@@ -9,8 +9,8 @@
 
 | Repository or runtime | Current state | What it proves |
 |---|---|---|
-| `nirog-core` | `main` at `768185e` | Fastify, TypeBox, Drizzle, PostgreSQL RLS, Clerk verification, account projection, profile grants, teams, directed invitations, device lifecycle, consent lifecycle, Scalar/OpenAPI, rate limits, R2 adapter, and outbox dispatcher contracts are implemented. |
-| Railway Core API | Online with `768185e` active | The migration service completed first, then the matching API revision became active. Public liveness returned HTTP `200`; verified Clerk account projection and signed webhook receiving remain available. |
+| `nirog-core` | `main` at `503b42f` | The Core includes the deployed `d837173` isolated platform-role authority plane plus a subsequently verified, operator-only first-administrator bootstrap procedure. The normal API exposes no bootstrap route. |
+| Railway Core API | Online with `d837173` active | The platform-role migration completed first, then the matching API revision became active. Public liveness returned HTTP `200`; verified Clerk account projection and signed webhook receiving remain available. |
 | `nirog-web` | `main` at `3ac4be0` | The Next.js bridge normalizes the Core API base to `/api/v1`, forwards the current Clerk session token, and renders the current account result. |
 | Live Nirog Web | Verified with the preserved signed-in session | Repeated `Refresh record` requests render the verified empty-profile state, preferences, and a correlation ID rather than `401`, `404`, or `500`. |
 | `nirog-storybook` | Canonical `main` and deployment `next` | The incident history, architecture decisions, implementation plans, and this handoff are documented in the canonical repository and deployment branch. |
@@ -29,7 +29,7 @@ The current slice establishes a secure identity and profile-authority foundation
 | Delegated profile grants | API implemented | The owner can create, list, and revoke bounded `caregiver`, `curator`, or `viewer` grants. |
 | Team creation | API implemented | An authenticated account can create a collaboration team and becomes its team owner. |
 | Team invitations and member onboarding | API implemented and deployed | Direct-account invitations support create, accept, decline, cancel, idempotency, default/maximum expiry, audit/outbox evidence, and PostgreSQL RLS enforcement. A team role remains non-clinical. |
-| Platform staff administration | Not implemented | There is no global `platform_admin` role model or endpoint in Core today. |
+| Platform staff administration | API implemented and deployed | A separate `platform.platform_role_assignments` model supports `platform_admin`, `support_agent`, and `security_auditor` assignments. The public API is active-admin-only and adds no profile, evidence, medication, prescription, consent, or other clinical authority. |
 | Clerk lifecycle webhooks | Development activation verified | The public `/api/v1/integrations/clerk/webhooks` route preserves raw payload bytes, verifies the Svix signature with Clerk’s supported verifier, records supported lifecycle deliveries idempotently, and emits audit/outbox evidence. The Nirog Development endpoint subscribes only to `user.created`, `user.updated`, and `user.deleted`; its protected Railway signing secret is active, and a real `user.created` delivery received HTTP `202` from Core. |
 | Device lifecycle | API implemented and deployed | An authenticated account may register/reactivate an `ios`, `android`, or `web` device and revoke only its own active device. Device fingerprints and optional push tokens are SHA-256 hashed before persistence and never appear in API responses, audit metadata, or outbox payloads. |
 | Consent lifecycle | API implemented and deployed | Only the profile owner may create or withdraw an active, purpose-bound consent for `data-sharing`, `research`, or `marketing`. The action is bound to the active profile/account RLS context and emits audit/outbox evidence. |
@@ -56,9 +56,11 @@ The current team model has `owner`, `admin`, and `member` records. The creator o
 
 Team owners may invite either `admin` or `member` accounts. Active team administrators may invite and cancel `member` invitations only; they cannot assign another administrator. The intended account alone may accept or decline its direct invitation. Invitation expiry defaults to seven days and is bounded to 30 days. Do not manually insert members into Neon or treat a team row as a patient-data grant.
 
-### Platform and workforce roles: deliberately not implemented
+### Platform roles: implemented, deliberately non-clinical
 
-There is no production Core role called `platform_admin`, `support_agent`, `catalog_editor`, or `clinician` today. The bounded Strapi administration plane is for curated non-clinical catalog and editorial work; it is not a shortcut around Core’s profile grants. A future platform role must not create broad clinical visibility by default.[2]
+Core now supports `platform_admin`, `support_agent`, and `security_auditor` assignments only in the separate `platform.platform_role_assignments` authority plane. Active platform administrators may list, create, and revoke those **non-clinical** assignments through `/api/v1/platform/role-assignments`; mutations require idempotency keys and emit safe audit/outbox evidence. An active administrator has no patient-profile, evidence, medication, prescription, consent, or clinical-record permission by virtue of that assignment. The disposable PostgreSQL suite proves an active platform administrator cannot see an unrelated patient profile.[2]
+
+The first administrator is not created through HTTP. The migrator offers a one-time operator command that requires temporary sealed `PLATFORM_BOOTSTRAP_ENABLED=true` and `PLATFORM_BOOTSTRAP_ACCOUNT_ID` values, refuses to run for a non-migrator runtime or after any active platform administrator exists, and must be disabled immediately after successful use. No initial administrator has been configured as part of this release.
 
 ## 4. How to set people up today
 
@@ -73,11 +75,11 @@ The following current workflow is safe and supported by the present implementati
 | Add a team administrator or member | Use `POST /api/v1/teams/:teamId/invitations` with an idempotency key and the recipient’s local account ID. The recipient uses the dedicated accept or decline route. | A team owner may invite `admin` or `member`; a team admin may invite only `member`. Do not perform manual database edits or infer membership from a Clerk Organization. |
 | Register or revoke a device | Use `POST /api/v1/devices` or `DELETE /api/v1/devices/:deviceId` with an idempotency key. | The authenticated account controls only its own devices. Send a client fingerprint and optional push token only over the authenticated API; Core stores SHA-256 digests, never raw token material. |
 | Record or withdraw consent | As the profile owner, use `POST /api/v1/profiles/:profileId/consents` or `DELETE /api/v1/profiles/:profileId/consents/:consentId` with an idempotency key. | Valid purposes are `data-sharing`, `research`, and `marketing`. A consent record does not create a profile grant or patient-data access by itself. |
-| Make a platform administrator | Do not assign one in Core yet. Implement the dedicated platform-admin slice below first. | A global admin must remain distinct from clinical/profile authority. |
+| Make a platform administrator | After a target person has a local Core account projection, use the operator-only bootstrap command exactly once, then use the active-admin API for subsequent role assignments. | Keep temporary bootstrap configuration disabled outside the operator run. A platform assignment is never a patient-data grant. |
 
 The current Web companion confirms account projection and empty-profile state. It does not yet provide a full administrative console for profile grants, teams, invitations, or staff. Use Scalar’s documented invitation routes only for controlled test operations until the Web companion exposes these flows; do not bypass Core with direct database changes.[3]
 
-## 5. Recommended administrator model before implementation
+## 5. Deployed administrator model
 
 The next administration implementation should create four separate planes rather than one catch-all “admin” flag.
 
@@ -88,9 +90,9 @@ The next administration implementation should create four separate planes rather
 | Collaboration | `team.owner`, `team.admin`, `team.member` | None | Existing Core teams and deployed direct-account invitation lifecycle. |
 | Patient care | `owner`, `caregiver`, `curator`, `viewer` | Exactly the persisted profile-grant snapshot | Existing Core profile-grant model. |
 
-The implementation should include a new `identity.platform_role_assignments` record with assignment status, issuer, account ID, role code, granting actor, reason, expiry, creation and revocation timestamps, and an immutable audit/outbox trail. A one-time bootstrap command should assign the first `platform_admin` to a verified local account without embedding an email, Clerk user ID, or secret in source control. The command must be protected by an environment-specific operational procedure and disabled after use.
+The deployed `platform.platform_role_assignments` record carries account ID, role code, assignment/revocation lifecycle, actor identifiers, reason, and expiry metadata. It is RLS-protected with an isolated security-definer active-admin predicate. The one-time bootstrap command assigns the first `platform_admin` to a verified local account without embedding an email, Clerk user ID, or secret in source control; its temporary enablement variables must be removed after the operator run.
 
-Core should then expose separately authorized, idempotent staff-role assignment and revocation commands. A `platform_admin` may manage staff accounts and configuration but should still have **no default** access to profile evidence, medication history, or clinical records. Any justified exceptional access must be designed as a future break-glass, purpose-bound PBAC decision with independent audit evidence—not as a normal administrator capability.
+The Core API separately authorizes idempotent staff-role listing, assignment, and revocation. A `platform_admin` may manage only platform assignments and still has **no default** access to profile evidence, medication history, or clinical records. Any justified exceptional access remains a future break-glass, purpose-bound PBAC decision with independent audit evidence—not a normal administrator capability.
 
 Clerk Organization roles may be used later as a sign-in and navigation convenience for workforce applications, but Core must receive them only through a verified, replay-safe Svix webhook and map them to local assignments after validation. They must never be the direct authorization source for patient data.[4]
 
@@ -98,14 +100,13 @@ Clerk Organization roles may be used later as a sign-in and navigation convenien
 
 The immediate technical order protects identity and authorization before the medication/OCR product surface grows.
 
-1. **Implement the dedicated platform-administration slice.** Add the separate platform-role model, bootstrap procedure, operational APIs, audit/outbox events, and no-clinical-access-by-default policy described above.
-2. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts only after the user/access release boundary is complete.
+1. **Begin medicine, prescription, and OCR delivery.** Introduce catalog, prescription, regimen, dose, reminder, evidence, and bounded asynchronous OCR contracts now that the user/access release boundary is complete.
 
 This order keeps clinical and ML workloads from depending on incomplete human-access controls. The existing outbox and dispatcher architecture can then carry OCR job references and notification work without letting an ML worker become a patient-data authority.[5]
 
 ## 7. Immediate decisions for the project owner
 
-Before the platform-admin slice is implemented, decide who will be the first operational administrator, who can approve additional staff assignments, which support functions are allowed, whether every support action requires a consent/purpose record, and whether any break-glass process is permitted. Record these decisions as policies, not as ad hoc database edits.
+Before invoking bootstrap, decide who will be the first operational administrator, who can approve additional staff assignments, which support functions are allowed, whether every support action requires a consent/purpose record, and whether any break-glass process is permitted. Record these decisions as policies, not as ad hoc database edits.
 
 For the current test environment, continue creating test users by Clerk sign-in and use profiles plus explicit profile grants for any patient-care sharing test. Treat the future `platform_admin` as a distinct development task requiring approval before implementation.
 

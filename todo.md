@@ -169,7 +169,112 @@ The deployment review identified that an R2 custom/public domain cannot serve as
 - [x] Trace the authenticated Nirog Web Core bridge, Clerk session-token template selection, and Nirog Core verifier expectations behind the reported `401 UNAUTHENTICATED` response.
 - [x] Correct the token-template/audience/authorization-header boundary: request the normal session-bound token, and configure the Nirog audience as a Clerk session-token claim rather than a custom JWT template.
 - [ ] Verify the fixed authenticated request path and publish the Core, Web, and documentation update if required.
+- [ ] Diagnose the renewed live `401 UNAUTHENTICATED` after the Clerk session audience claim was added, using only safe correlation/claim-presence diagnostics to isolate audience, authorized-party, issuer/key, or deployment-version mismatch.
+- [ ] Restore the Railway API service from the reported startup loop by replacing the invalid R2 custom-domain endpoint with the Cloudflare account S3 endpoint, then collect the safe Clerk verifier diagnostic from a live request.
+
+The supplied Railway logs confirm that the API process stops during configuration loading and never reaches the Clerk verifier. The replacement endpoint supplied for the Railway API service is `https://31bdd67db1cb4ef613270147c715fdee.r2.cloudflarestorage.com`; the Railway dashboard was opened for the configuration update, but its service controls had not rendered in the sandbox view at inspection time.
+
+After browser sign-in, the Railway workspace shows project `zealous-success` with one of four services crashed. The project route is open and the API service must be identified from its service controls before saving the approved R2 endpoint replacement.
+
+The Railway service view now shows `@nirog/api` online at `nirog.up.railway.app` and `@nirog/dispatcher` online. The crashed workload is `@nirog/migrator`, so the original R2 startup log must be associated with that separate service or an earlier API deployment; the migrator’s actual variables and deploy command must be inspected before changing a healthy API service.
+
+The migrator service currently has only `DATABASE_URL`, `POSTGRES_URL`, `NIROG_APP_ENV`, and `NIROG_RUNTIME_ROLE` as explicit variables. This is the correct minimal secret boundary for a migration role; the values remain masked. The remaining investigation is therefore limited to whether `NIROG_RUNTIME_ROLE` is set to `migrator` and whether the service uses the migration command rather than the API start command.
+
+The migrator settings confirm its custom start command is already `pnpm --filter @nirog/migrator start`, matching the repository’s one-shot Drizzle migrator package. The approved corrective edit is restricted to its `NIROG_RUNTIME_ROLE` service variable; the variable’s existing masked value is not revealed or retained.
+
+The approved variable inspection confirms `NIROG_RUNTIME_ROLE=migrator` is already set. No variable was changed or saved. The migrator’s reported `Crashed` state must therefore be diagnosed from its current deployment logs and one-shot process lifecycle rather than altered role or R2 configuration.
+
+The current Railway migrator deployment is marked `Crashed` for commit `5318354`, despite its correct one-shot start command and runtime role. The deployment-card interaction did not expose its log body, so the next safe inspection target is the service Console view.
+
+The Railway migrator console identifies the true database failure: the initial foundation migration reaches its permission grants, then Neon returns PostgreSQL error `42704` because local role `nirog_api` does not exist. The role and command configuration are correct; the foundation migration must conditionally create role-targeted grants/policies only when those optional local roles exist, while retaining the schema and RLS foundation for the Neon owner connection.
+
+Core commit `c222be8` contains the verified Neon-compatible migration repair, but Railway skipped the migrator deployment because its watch path is limited to `/apps/migrator/**` and does not include the shared `/packages/db/drizzle/**` directory. The migrator must be explicitly redeployed now, and its watch paths should include both the migrator application and the shared migration directory so future schema changes trigger the job.
+
+The Railway deployment history confirms `c222be8` was skipped exclusively for the configured watch-path rule; it was not rejected by build or migration validation. The confirmed migrator settings route is now open for the approved watch-path correction and subsequent redeploy.
+
+During the approved settings update, the Railway page briefly reset to a blank view and then reloaded the confirmed migrator settings route. No deployment or variable change occurred during the reset; the watch-path update remains pending.
+
+The approved watch-path addition is now staged as the sole Railway change: `/packages/db/drizzle/**`, alongside the existing `/apps/migrator/**`. Railway displays one pending configuration change and an explicit Deploy action; no secrets, variables, or other service settings were modified.
+
+The approved configuration change has been applied. Railway now lists both watch paths and has started a fresh migrator build, which will run Core commit `c222be8` and the Neon-compatible foundation migration.
+
+The new Railway migrator deployment has completed its build and entered the deploy stage. Both required watch paths remain configured; final migration output is pending.
+
+Railway now reports all four services—API, dispatcher, Redis, and migrator—as online. A browser navigation to the public API liveness route rendered as an empty page and then reset the browser view; an independent protocol-level request returned HTTP `200` from `https://nirog.up.railway.app/api/v1/health/live`.
+
+- [x] Repair the Neon-incompatible foundation migration and configure Railway to redeploy the migrator when shared Drizzle migration files change.
+- [ ] Retest one authenticated Nirog Web request now that the database migration and all Railway services are healthy; use the safe Clerk verifier diagnostic only if the response remains `401`.
+- [ ] Capture the new Railway migrator failure after its brief healthy state and determine whether it is a one-shot process lifecycle issue or a new migration error.
+- [ ] Capture the safe Core `authDiagnostic` category for the still-failing signed-in Web request, then correct only the remaining Clerk claim, origin, issuer, or deployment mismatch.
+
+The Railway migrator console has been reopened for the renewed failure, but its terminal stream is still loading. No production configuration was changed during this inspection.
+
+The console confirms there are no running migrator instances, and deployment history identifies the renewed crash as the fresh `c222be8` deployment (`51a7bfd2-a203-4fff-9e04-7dada30b8bde`). Its deploy-log output is the next evidence source.
+
+Direct navigation to the exact Railway deployment log route temporarily reset the sandbox browser to an empty page. No configuration or deployment state changed; the fresh deployment log remains the required diagnostic source.
+
+The Railway project page was reopened after the browser reset and is still rendering its service canvas. No service configuration, deployment, or variable was altered during this recovery step.
+
+The fresh migrator deployment log panel now shows it executed migration SQL before `@nirog/migrator` exited with status `1`. Its visible terminal footer contains `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` for `tsx src/main.ts`; the exact underlying PostgreSQL diagnostic was not present in the initially loaded log slice and is being extracted without reading any secret values.
+
+The role-dependent statement was identified in `0001_clerk_user_subsystem.sql`: the Clerk user-subsystem migration still created policies and grants `TO nirog_api` without checking whether that local role exists. Core commit `8c8caaa` now keeps RLS enabled but conditionally applies those optional local-role grants and policies. Lint, type-checking, and all 26 tests pass; the commit is pushed to `main` and should trigger the migrator through `/packages/db/drizzle/**`.
+
+Railway marked the new `8c8caaa` migrator deployment as requiring external-contributor approval. The user approved deployment; the visible control was invoked after the first click did not advance the page state. The next check is whether Railway transitions the pending job into build/deploy execution.
+
+Railway accepted the approved deployment and the new guarded-migration job is now building. The API and dispatcher remain online while the migrator build proceeds; no additional configuration has been changed.
+
+The approved `8c8caaa` migrator deployment completed successfully. Railway now reports the migrator, API, dispatcher, and Redis services as online; the prior failing migrator deployment has been removed. The remaining active issue is the separate signed-in Web-to-Core authentication failure.
+
+The API service is confirmed online on the safe Clerk diagnostic deployment (`chore: log safe Clerk verification diagnostics`). Its Railway console session is available, while the migrator is now shown as completed rather than crashed. The next evidence source is the API log explorer filtered for the current Web authentication failure.
+
+Railway’s API log explorer confirms the migrator’s new run completed (`Nirog Core migrations completed`). It also captures the current Web-to-Core rejection as `authFailure=invalid_token` and `authDiagnostic=clerk.unexpected-verification-failure` for `GET /me`. The Core route and bearer-header boundary are being reached; the remaining issue is the deployed Clerk verification/key/claim configuration.
+
+The live API variable inventory confirms `CLERK_JWT_KEY`, `CLERK_AUDIENCE`, and `CLERK_AUTHORIZED_PARTIES` are present, but `CLERK_SECRET_KEY` is absent. The Core is therefore using only the multiline static public-key verifier; switching to Clerk’s server-side secret-key/JWKS verification is the remaining recommended production repair. Variable values were not viewed or retained.
+
+Core commit `b2ae478` now prefers `CLERK_SECRET_KEY` for Clerk’s JWKS verification whenever it is configured, falling back to `CLERK_JWT_KEY` only when no secret key exists. The focused regression test passes as part of the 27-test Core suite. The remaining live action is to add the current Clerk **backend secret key** in Railway under `CLERK_SECRET_KEY` and redeploy the API; the existing static public key may remain temporarily because the corrected verifier will no longer select it when a secret key is present.
+
+Railway has accepted the `b2ae478` API deployment and is building it. The prior API deployment remains healthy during the transition; final validation requires the completed build and the presence of the user-entered `CLERK_SECRET_KEY` variable.
+
+The `b2ae478` API deployment is now active and the signed-in Clerk Web session was reproduced at `https://www.nirog.me`. A direct same-origin bridge request to `GET /api/core/me` still returns the generic `401 UNAUTHENTICATED` problem with correlation ID `e856b8af-79d8-4e2d-b790-6431ac352e5e`; no token content was accessed. The next step is to retrieve only the matching Core log diagnostic.
+
+The matching Railway log retains `authDiagnostic=clerk.unexpected-verification-failure`. The request reaches the new API process, but the rejection does not yet distinguish an explicit audience or authorized-party mismatch; the immediate check is whether the newly added `CLERK_SECRET_KEY` was injected into a deployment that started after it was saved.
+
+The initial post-save Railway variable check temporarily reset the sandbox browser to an empty page before the variable inventory rendered. No service setting or secret was read; the secret-key presence check remains pending through a stable Railway project route.
+
+The Railway project route has recovered and confirms the migrator is completed while the API, dispatcher, and Redis services are online. No configuration was changed during the browser recovery; the API secret-key presence and runtime-injection check remains in progress.
+
+The stable API variable inventory now confirms `CLERK_SECRET_KEY` is present alongside `CLERK_JWT_KEY`, `CLERK_AUDIENCE`, and `CLERK_AUTHORIZED_PARTIES`; all values remain masked. Since Core commit `b2ae478` is active and prefers the secret-key/JWKS path, the remaining failure is narrowed to a Clerk key/instance alignment issue or the live session token’s non-sensitive issuer/audience/authorized-party claims.
+
+Core commit `17eb7ef` expands the safe Clerk diagnostic map to explicitly classify invalid server keys, remote JWKS resolution, and issued-in-the-future conditions. It is pushed to `main` with all lint, type, and 28-test checks passing. Railway must deploy this API-only diagnostic change before the next signed-in bridge request reveals the remaining key or claim mismatch.
+
+Railway shows the `17eb7ef` API deployment as pending external-contributor approval. The currently active API deployment remains `b2ae478`, which already prefers the now-present `CLERK_SECRET_KEY`; approval is required only to activate the additional safe diagnostic categories for the next live test.
+
+The user approved the `17eb7ef` API deployment. Railway accepted it and entered the build phase while `b2ae478` remains active; the expanded diagnostic cannot yet be used until the build completes.
+
+Railway has now activated the approved `17eb7ef` API deployment (`318c328b-352f-452c-897e-a0c3301e0040`). The safe expanded Clerk diagnostic is live and ready for a reproduction using the already signed-in Nirog Web session.
+
+The signed-in Nirog Web app was reopened for the post-deployment test. Browser-console `fetch` execution did not retain the page origin, so the same read-only bridge request will be reproduced through the rendered `Refresh record` control instead; no token, secret, or deployment setting was accessed or changed.
+
+The sandbox browser subsystem entered a temporary crash-loop cooldown before the rendered refresh control could be invoked. Railway deployment `17eb7ef` remains active with the expanded safe Clerk diagnostic; a user-initiated refresh from the signed-in frontend will produce the final non-sensitive correlation and diagnostic needed for resolution.
+
+After browser recovery, the preserved signed-in session autonomously refreshed the Nirog Web record against active Core deployment `17eb7ef`. The Web app still returned its generic authentication card, while the signed-in display identity remained present. The final action is to read the just-written Railway API diagnostic, which now includes explicit invalid-key and JWKS categories.
+
+The final root cause is in Core’s Clerk SDK integration, not the active session, Railway secret, or audience claim: the public `@clerk/backend` `verifyToken()` adapter returns decoded claims directly on success and throws on verification failure. Core incorrectly treated the success result as an internal `{ data, errors }` envelope, so `!verified.data` was always true and every successful Clerk session was rejected as `UNAUTHENTICATED`. The next patch will consume direct claims and add a regression test for the public SDK return shape.
+
+Core commit `a1071a8` fixes the return-shape defect by consuming the public Clerk verifier’s direct decoded-claims object and preserving thrown verification errors for the existing safe diagnostic path. The correction is pushed to `main`; lint, type checking, and all 29 tests pass. Railway deployment approval is the remaining step before the preserved signed-in Web session can succeed.
+
+After the approved `a1071a8` deployment became active, the preserved signed-in Web session advanced past the prior `UNAUTHENTICATED` failure and now receives `Route not found`. This confirms Clerk authentication is functioning; the remaining issue is a Web-to-Core route-base mismatch, with the bridge reaching Core’s authenticated path but requesting a route that the deployed API does not serve. The Web bridge URL construction and Core route registration must be aligned next.
+
+Nirog Web commit `3ac4be0` normalizes `NIROG_CORE_API_URL` to the required Core `/api/v1` root whether Railway/Vercel supplies a bare public origin or an already versioned base. Production lint and build pass. The commit is pushed to `main`; after its automatic web deployment becomes active, the preserved signed-in session should load `GET /api/core/me` successfully instead of returning `Route not found`.
+
+The published Web route correction is live: the signed-in dashboard progresses past both `UNAUTHENTICATED` and `Route not found`, then receives `Internal server error` from Core. This proves the request now reaches the authenticated account path; the remaining defect is in Core’s JIT account provisioning or account-projection persistence and must be identified from the current Railway API error log.
+
+Railway identifies the authenticated `GET /api/v1/me` failure as `TypeError: Cannot read properties of undefined (reading 'parsers')` in Drizzle’s postgres.js driver, called by `createScopedDatabase()` during `DrizzleUserRequestScope.run`. The transaction-scoped persistence layer is incorrectly constructing a new Drizzle client around a postgres.js transaction object; the fix must use the existing transaction-aware Drizzle context instead of treating it as a raw postgres client.
 
 The current implementation baseline is Node 24 with TypeScript, Fastify, TypeBox, Drizzle, and PostgreSQL RLS; a PostgreSQL transactional outbox with a separate Railway dispatcher; Cloudflare R2 private evidence storage; managed Valkey/Redis for shared rate limits; Clerk authentication; Scalar/OpenAPI contracts; Docker Compose for local development; and Railway services for deployment. Storybook MDX/Mermaid remains the human architecture hub, while Fastify-generated OpenAPI plus Scalar is the executable API documentation layer.
+
+The Core persistence scope is corrected locally: `withRequestContext()` now opens a native Drizzle transaction, applies the RLS settings with `transaction.execute(sql\`select set_config(...)\`)`, and passes that same transaction directly to `DrizzleUserRepository` and `DrizzleUserEventWriter`. This removes the invalid `createScopedDatabase()` re-wrap. A regression test proves the native transaction is preserved and receives all four RLS settings. `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass with 30 tests across 9 files; the change is ready to commit and deploy.
+
+Core commit `098b762` (`fix(db): use native Drizzle request transactions`) was approved and is active on the Railway API service. The preserved signed-in Nirog Web session now completes `GET /api/core/me` successfully: the dashboard renders **Verified profile record**, `UTC` preferences with notifications enabled, a server correlation identifier, and the expected empty-profile state rather than an authentication, route, or internal-server error. The full Clerk bearer propagation, session audience, Core verifier, route-base, migration, and transaction-scope incident is resolved end to end.
 
 The stack must preserve a modular FastAPI/Python monolith with explicit application/domain/port/infrastructure layers, strict Pydantic transport models and immutable command types, PostgreSQL as the canonical authority with transaction-scoped RLS defense in depth, private object storage for evidence, a Redis-compatible broker/cache, separately scaled worker pools, OIDC/OAuth2 actor resolution, current profile capability evaluation, RBAC with a future policy evaluator seam, Flutter-safe OpenAPI/change-feed contracts, transactional outbox/idempotency, and redacted end-to-end observability.

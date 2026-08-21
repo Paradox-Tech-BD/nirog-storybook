@@ -69,6 +69,7 @@ The worker image is based on `python:3.13-slim` and installs only `tesseract-ocr
 | `OCR_TIMEOUT_SECONDS` | Worker | Bounds each engine invocation. |
 | `OCR_MAX_PDF_PAGES` | Worker | Bounds PDF conversion work before OCR. |
 | `OCR_LANGUAGE` | Worker | Initial default `eng`; adding another language requires a reviewed container package and contract update. |
+| `OCR_DEMO_FIXTURE_ID` | Worker | Required synthetic fixture marker, currently `demo.prescription-v1`; a non-`demo.*` value fails worker startup. |
 
 ## 5. Deployment and observability
 
@@ -86,7 +87,7 @@ The isolated Railway worker, dispatcher, and Core API are deployed and online. T
 
 The historical acceptance smoke test used a protected, Clerk-session-bound web-companion route limited to the isolated competition profile and a fixed prescription. It created only a synthetic, monochrome PNG containing **“NIROG OCR TEST”**, **“SYNTHETIC DOCUMENT”**, **“CODE 20260821”**, and **“NO CLINICAL DATA.”** That smoke path predates the provenance migration and must be treated as historical demo evidence; any repeat or new demo submission must use an explicit fixture identifier such as `demo.prescription-v1`.
 
-The dispatcher delivered the event, the worker acquired the Core lease, and Core persisted one `pending_review` extraction with bounded synthetic text. No medication, regimen, dose log, candidate medication field, or prescription state was created or changed automatically. Core commit `863aa1c` added `result_source` and `demo_fixture_id`, validates the demo/ML combinations in the command layer, and applies the same invariant in migration `0015_ocr_result_provenance.sql`. Core lint, TypeScript, and the full unit suite passed with **68 passing tests** and **9 environment-dependent skips**. Railway applied the migrator first and then activated the API revision; both services are online. Real ML OCR remains disabled by policy until the ML team delivers results.
+The dispatcher delivered the event, the worker acquired the Core lease, and Core persisted one `pending_review` extraction with bounded synthetic text. No medication, regimen, dose log, candidate medication field, or prescription state was created or changed automatically. Core commit `863aa1c` added `result_source` and `demo_fixture_id`, validates the demo/ML combinations in the command layer, and applies the same invariant in migration `0015_ocr_result_provenance.sql`. Core lint, TypeScript, and the full unit suite passed with **68 passing tests** and **9 environment-dependent skips**. Worker commit `a78d9be` switched the active worker path to deterministic demo fixtures, removed OCR-engine runtime binaries from the image, and passed **15 Python unit tests**. Railway applied the migrator first, activated the API revision, and then activated the worker with `OCR_DEMO_FIXTURE_ID=demo.prescription-v1`; all three services are online. Real ML OCR remains disabled by policy until the ML team delivers results.
 
 ## References
 

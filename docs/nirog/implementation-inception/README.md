@@ -34,6 +34,13 @@ This library turns the approved Nirog architecture into an executable starting p
 | 12 | [11 — Cloudflare R2 Evidence Storage](11-cloudflare-r2-evidence-storage.md) | Configuring private evidence objects through R2 while preserving the separate SQS worker transport. |
 | 13 | [12 — Railway PostgreSQL Outbox Deployment](12-railway-postgresql-outbox-deployment.md) | Deploying Core API and dispatcher services on Railway with PostgreSQL leases, retries, and Cloudflare R2 evidence storage. |
 | 14 | [13 — Current Project State and Access Setup](13-current-project-state-and-access-setup.md) | Understanding the deployed baseline, remaining release order, and safe separation between platform, team, and patient-care roles. |
+| 15 | [14 — Platform Administration API Security Contract](14-platform-administration-api-security-contract.md) | Reviewing separate platform-role assignment and its zero-patient-data boundary. |
+| 16 | [15 — Manual Medication API Security Contract](15-manual-medication-api-security-contract.md) | Reviewing profile-authorized manual prescription, regimen, schedule, and dose outcomes. |
+| 17 | [16 — Prescription Evidence OCR Security Contract](16-prescription-evidence-ocr-security-contract.md) | Reviewing the private evidence and provenance boundary for advisory OCR. |
+| 18 | [17 — OCR Worker Lease, Result, and Review Contract](17-ocr-worker-lease-result-contract.md) | Implementing the private worker lease, result, and owner-review boundary. |
+| 19 | [18 — Concrete OCR Worker Service Contract](18-concrete-ocr-worker-service-contract.md) | Operating the isolated worker service while preserving Core-owned authority. |
+| 20 | [19 — Reminder, Adherence, and Refill Foundation](19-reminder-adherence-refill-foundation.md) | Reviewing the bounded post-review reminder, adherence, and refill workflows. |
+| 21 | [20 — Core-linked OCR Lab Correlation and Review Receipt](20-core-linked-ocr-lab-correlation.md) | Integrating the OCR/ML Lab with a signed, short-lived, human-confirmed, identifier-only Core receipt. |
 
 The [research notes](research-notes.md) preserve the evidence behind the technology and Strapi decision.
 

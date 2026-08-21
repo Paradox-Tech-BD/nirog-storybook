@@ -1,14 +1,14 @@
 # Concrete OCR Worker Service Contract
 
-**Status:** deployed and acceptance-verified (Phase 8).
+**Status:** the worker transport topology is deployed and acceptance-verified; explicit OCR provenance is now enforced by Core commit `863aa1c`. Real ML output remains deferred until the ML team delivers results, so the active worker path must use marked demo fixtures only.
 
-**Depends on:** migration `0010_ocr_worker_boundary.sql`, the Railway dispatcher, Cloudflare R2 evidence foundation, and independently sealed worker-service identities.
+**Depends on:** migrations `0010_ocr_worker_boundary.sql` and `0015_ocr_result_provenance.sql`, the Railway dispatcher, Cloudflare R2 evidence foundation, and independently sealed worker-service identities.
 
 > **Operating rule:** the concrete worker is an evidence-only execution peer. It receives an identifier-only dispatcher event, asks Core to lease that exact job, downloads only the Core-authorized object, and submits a bounded result. It never connects to PostgreSQL, receives R2 credentials, selects another object, creates a regimen, or interprets OCR output as a prescription decision.
 
 ## 1. Selected service shape
 
-The worker will replace the dormant `workers/ml` loop with a small Python HTTP service deployed as a separate Railway service. It will use a local, container-installed Tesseract engine rather than a managed OCR provider in the first release. This keeps prescription bytes inside the already approved Railway/Core/R2 control plane and avoids introducing a new data processor or API credential. Tesseract supports text output through its command-line interface and can run the LSTM engine with `--oem 1`; English is the initial supported language. [1]
+The planned worker shape is a small Python HTTP service deployed as a separate Railway service. It may use a local, container-installed OCR engine rather than a managed OCR provider, but this execution path is not allowed to emit unmarked or real ML results in the current release. Until the ML team delivers results, every successful or controlled demo result must send `resultSource: "demo"` and a fixture identifier matching `demo.[A-Za-z0-9._-]{1,127}`. Real ML output will be enabled only through a later reviewed contract update. Tesseract supports text output through its command-line interface and can run the LSTM engine with `--oem 1`; English is the initial supported language. [1]
 
 | Component | Responsibility | Explicitly not responsible for |
 |---|---|---|
@@ -35,7 +35,7 @@ sequenceDiagram
     A-->>W: One short-lived download URL
     W->>R: Download to a bounded temporary file
     W->>W: Convert PDF pages if needed; run local Tesseract
-    W->>A: POST bounded success or failure result\nIdempotency-Key
+    W->>A: POST bounded result + resultSource/demoFixtureId\nIdempotency-Key
     A-->>W: Safe result status
 ```
 
@@ -52,9 +52,9 @@ The worker accepts only `evidence.ocr.requested.v1` events with a UUID-shaped `p
 | Download | Maximum 10 MiB, HTTPS only, timeout, temporary non-world-readable file, delete in `finally`. | Missing/oversized/invalid object becomes controlled Core failure. |
 | Document conversion | JPEG, PNG, and WebP process directly. PDF is rendered with `pdftoppm` at bounded resolution and page count before OCR. | Unsupported/corrupt data is a controlled permanent failure. |
 | OCR | Tesseract runs as an unprivileged user with a timeout and `eng` LSTM mode. It outputs plain text only; no provider prompt, confidence, image, or object path enters Core events. | Process timeout/service failure is retryable until the Core attempt cap; then Core dead-letters it. |
-| Result | At most 20,000 characters of raw text; no candidate medication mutation. | Worker submits only Core’s allowlisted failure code and cannot choose retry time. |
+| Result | At most 20,000 characters of raw text; no candidate medication mutation; explicit provenance marker required. | Worker submits only Core’s allowlisted failure code and cannot choose retry time. Demo results require `demoFixtureId`; ML results must omit it. |
 
-The initial worker submits `rawText` only. Candidate medication, dose, and frequency extraction remains a later reviewable enhancement; raw text becomes a clinical `pending_review` extraction only through the deployed Core result command. Tesseract’s documented simple invocation produces text output by default, while its `--oem 1` mode selects its LSTM engine. [1]
+The current demo worker path may submit bounded synthetic `rawText` and candidate fields, but every result must be marked with `resultSource: "demo"` and a valid `demoFixtureId`; real ML output is not permitted yet. Candidate medication, dose, and frequency extraction remains a later reviewable enhancement; any raw text becomes a clinical `pending_review` extraction only through the deployed Core result command. Tesseract’s documented simple invocation produces text output by default, while its `--oem 1` mode selects its LSTM engine. [1]
 
 ## 4. Container and runtime requirements
 
@@ -78,15 +78,15 @@ Core remains the source of durable retry/dead-letter behavior. A temporary netwo
 
 ## 6. Verification gate
 
-The worker increment is complete only when its package tests cover secret rejection, schema validation, duplicate delivery/no-op behavior, bounded download, OCR timeout mapping, PDF/image processing selection, result redaction, and temporary-file cleanup. Core/dispatcher tests must prove identifier-only event delivery. A disposable integration test must prove no worker route can read outside a leased job/profile. Railway deployment must configure a separate worker service and its two sealed secrets, then verify the worker health route and a controlled non-clinical test event without real patient evidence.
+The worker increment is complete only when its package tests cover secret rejection, schema validation, duplicate delivery/no-op behavior, bounded download, OCR timeout mapping, PDF/image processing selection, result redaction, provenance-marker validation, and temporary-file cleanup. Core/dispatcher tests must prove identifier-only event delivery. A disposable integration test must prove no worker route can read outside a leased job/profile. Railway deployment must configure a separate worker service and its two sealed secrets, then verify the worker health route and a controlled non-clinical demo event whose result carries `resultSource: "demo"` and a valid `demoFixtureId`; real ML evidence is outside this release gate.
 
 ## 7. Deployment acceptance record
 
 The isolated Railway worker, dispatcher, and Core API are deployed and online. The worker has no PostgreSQL, R2, or Clerk configuration; the dispatcher and worker continue to authenticate through their independent sealed ingress identity, while Core-to-worker calls use the separately sealed internal identity. The production R2 bucket allows only the required browser origins and `PUT`, `GET`, and `HEAD` methods for controlled presigned evidence operations; it is not publicly exposed.
 
-The acceptance smoke test used a protected, Clerk-session-bound web-companion route limited to the isolated competition profile and a fixed prescription. It created only a synthetic, monochrome PNG containing **“NIROG OCR TEST”**, **“SYNTHETIC DOCUMENT”**, **“CODE 20260821”**, and **“NO CLINICAL DATA.”** The route authorized and uploaded evidence through the normal Core workflow, completed the evidence record, enqueued the identifier-only outbox event, and polled Core’s review projection.
+The historical acceptance smoke test used a protected, Clerk-session-bound web-companion route limited to the isolated competition profile and a fixed prescription. It created only a synthetic, monochrome PNG containing **“NIROG OCR TEST”**, **“SYNTHETIC DOCUMENT”**, **“CODE 20260821”**, and **“NO CLINICAL DATA.”** That smoke path predates the provenance migration and must be treated as historical demo evidence; any repeat or new demo submission must use an explicit fixture identifier such as `demo.prescription-v1`.
 
-The dispatcher delivered the event, the worker acquired the Core lease, and Core persisted one `pending_review` extraction with the bounded synthetic text. No medication, regimen, dose log, candidate medication field, or prescription state was created or changed automatically. During acceptance, an API lease predicate was corrected to use PostgreSQL `now()` rather than binding a raw JavaScript `Date` inside a SQL fragment; the Core regression test protects this driver-serialization boundary. Core lint, TypeScript, and the full unit suite passed with **46 passing tests** and **9 environment-dependent skips**. The repository-wide formatting gate continues to report pre-existing unrelated formatting drift and was not rewritten as part of this deployment repair.
+The dispatcher delivered the event, the worker acquired the Core lease, and Core persisted one `pending_review` extraction with bounded synthetic text. No medication, regimen, dose log, candidate medication field, or prescription state was created or changed automatically. Core commit `863aa1c` added `result_source` and `demo_fixture_id`, validates the demo/ML combinations in the command layer, and applies the same invariant in migration `0015_ocr_result_provenance.sql`. Core lint, TypeScript, and the full unit suite passed with **68 passing tests** and **9 environment-dependent skips**. Railway applied the migrator first and then activated the API revision; both services are online. Real ML OCR remains disabled by policy until the ML team delivers results.
 
 ## References
 

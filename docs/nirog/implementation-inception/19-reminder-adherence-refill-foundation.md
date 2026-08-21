@@ -1,6 +1,6 @@
 # Phase 9 Reminder, Adherence, and Refill Foundation
 
-**Status:** approved schema foundation; no patient reminder or refill delivery is enabled by this document alone.
+**Status:** schema foundation, local-time materialization, and the inventory/refill API are deployed. Due-notification delivery and persisted adherence reporting remain intentionally incomplete.
 
 > **Design position:** a medication schedule expresses the expected local-time pattern; a materialized reminder occurrence expresses one immutable due opportunity; a dose outcome remains the clinical source record; adherence metrics and streaks are rebuildable projections; inventory movements are an append-only ledger; and a refill alert is a workflow state, not a medication decision.
 
@@ -44,9 +44,9 @@ stateDiagram-v2
 
 ## 4. Due-work execution
 
-The existing Railway dispatcher is the selected execution host for the Phase 9 deterministic worker. This avoids an external polling product and reuses the already deployed PostgreSQL retry, lease, observability, and identifier-only outbox conventions. The upcoming worker will have a dedicated `reminder-dispatcher` workload and only two purposes: `reminder.due.claim` and `reminder.due.complete`.
+The existing Railway dispatcher is the selected execution host for the Phase 9 deterministic worker. This avoids an external polling product and reuses the already deployed PostgreSQL retry, lease, observability, and identifier-only outbox conventions. The deployed materializer has the dedicated `reminder-dispatcher` workload and the narrow `reminder.materialize` purpose. The later due-dispatch slice will add only `reminder.due.claim` and `reminder.due.complete`.
 
-Due rows are claimed inside a short transaction with row locking and `SKIP LOCKED`, then marked before notification intent is emitted. PostgreSQL documents `SKIP LOCKED` as a locking-clause option for `SELECT`, permitting a claimant to bypass rows already locked by another worker. [2] The worker must never scan raw prescription evidence, OCR text, device credentials, or another clinical profile’s dosage details. Its RLS exception is limited to reminder occurrences under the explicit workload/purpose function; all other Phase 9 records keep ordinary profile-context RLS.
+The deployed materializer claims active reminder schedules inside a short transaction with row locking, `SKIP LOCKED`, and an expiring materialization lease. It derives bounded future occurrences in the schedule’s IANA timezone using compatible daylight-saving disambiguation, inserts them under the unique schedule/instant key, and advances its watermark only after processing the claimed schedule. PostgreSQL documents `SKIP LOCKED` as a locking-clause option for `SELECT`, permitting a claimant to bypass rows already locked by another worker. [2] The worker never scans raw prescription evidence, OCR text, device credentials, or another clinical profile’s dosage details. Its RLS exception is limited to reminder schedules and occurrences under the explicit workload/purpose function; all other Phase 9 records keep ordinary profile-context RLS.
 
 ```mermaid
 sequenceDiagram
@@ -76,15 +76,15 @@ FHIR’s dosage model distinguishes dosage instructions from the timing of admin
 
 ## 6. Inventory and refill workflow
 
-Inventory is intentionally separate from adherence. Recording a dose outcome does not reduce stock until a future command explicitly creates one idempotent `dose_deduction` movement for that outcome. This preserves user control when a medication was marked late, skipped, or taken from an untracked supply.
+Inventory is intentionally separate from adherence. Recording a dose outcome does not reduce stock until a future command explicitly creates one idempotent `dose_deduction` movement for that outcome. This preserves user control when a medication was marked late, skipped, or taken from an untracked supply. The deployed inventory API currently supports profile-authorized read, idempotent initialization, and positive refill movements; it does not yet deduct stock from a dose outcome.
 
-`clinical.regimen_inventories` is the current balance projection and optional refill threshold for one regimen. `clinical.inventory_movements` is the append-only accounting record: `refill`, `adjustment`, `dose_deduction`, `reversal`, quantity delta, and before/after balances. Constraints require non-negative balances, arithmetic continuity, valid movement direction, and at most one dose-linked movement. A refill history is therefore a filtered ledger view rather than a mutable separate log.
+`clinical.regimen_inventories` is the current balance projection and optional refill threshold for one regimen. `clinical.inventory_movements` is the append-only accounting record: `refill`, `adjustment`, `dose_deduction`, `reversal`, quantity delta, and before/after balances. The deployed refill command uses decimal-safe arithmetic, rejects a transition that would make the balance negative, and opens a refill alert only when a balance crosses downward through its configured threshold. A refill history is therefore a filtered ledger view rather than a mutable separate log.
 
 `clinical.refill_alerts` captures an observed balance, threshold snapshot, workflow state, and acknowledgement/resolution timestamps. The partial unique index allows at most one open or acknowledged alert per regimen. Alert creation is deterministic from an inventory change; acknowledgement does not modify a balance, and resolving an alert does not create a refill.
 
 ## 7. Access, validation, and data ownership
 
-The existing owner/caregiver/curator/viewer model remains the authorization source. Initial reminder settings use the existing `notification.manage` capability, schedule and inventory changes use `regimen.write`, dose outcome recording uses `adherence.write`, and analytics reads use `adherence.read`. A later dedicated refill permission may be added only alongside explicit grant-migration and consent analysis; this foundation does not silently broaden caregiver rights.
+The existing owner/caregiver/curator/viewer model remains the authorization source. Initial reminder settings use `notification.manage`; dose outcome recording uses `adherence.write`; analytics reads use `adherence.read`. The deployed refill slice adds explicit `inventory.read` and `inventory.write` capabilities rather than overloading `regimen.write`: owners have both by default, while caregivers receive inventory read only. This preserves the future policy-evaluator seam and does not silently broaden caregiver stock-mutation authority.
 
 All Phase 9 tables are profile-scoped. The migration enforces composite `(regimen_id, profile_id)` references where a child carries a profile, so an application bug cannot connect a record to a regimen in another profile. The normal RLS policy requires both the request’s profile context and the active profile-access capability. The only exception is `reminder_occurrences` under the narrowly named reminder-dispatcher workload and purpose pair.
 
@@ -100,7 +100,15 @@ Migration `0012_reminders_adherence_refills.sql` performs the first Phase 9 foun
 
 It also creates the restricted reminder-dispatcher RLS helper, grants only necessary DML to `nirog_api`, and enables profile-context policies on the new tables. The migration has no device-provider credential, no notification body, no model data, and no direct patient notification side effect.
 
-## 9. Acceptance gates for the next implementation slice
+## 9. Deployed Phase 9 increment record and remaining gates
+
+The deployed materializer increment adds migration `0013_reminder_materializer_boundary.sql`, which snapshots recurrence inputs on each reminder policy, adds a short-lived schedule-materialization lease, and scopes the dispatcher RLS exception to `reminder.materialize`, `reminder.due.claim`, and `reminder.due.complete`. The dispatcher’s materializer feature is explicitly enabled, plans only a bounded future horizon, and has focused tests for daylight-saving transitions, skipped local times, duplicate insertion, and migration-journal ordering. It sends no notification and emits no medication decision.
+
+The deployed inventory increment adds the profile-authorized `/inventory` and `/inventory/refills` API surface. Mutations require an idempotency key, use decimal quantities, write an audit record with identifiers only, and publish no balance or medicine-name text in the event payload. Automated stock deduction, alert acknowledgement, and patient-facing provider delivery are not yet enabled.
+
+The medication-domain package now contains pure, tested daily-adherence and streak calculations. Persisting these calculations into `clinical.adherence_daily_metrics` and `clinical.adherence_streaks`, plus exposing authorized daily/weekly/monthly reporting queries, remains the next implementation slice.
+
+The remaining acceptance gates are the controlled due-row/outbox flow, snooze and acknowledgement state transitions, persisted adherence recalculation and report isolation, idempotent dose-linked inventory deduction, refill-alert acknowledgement, and a bounded authenticated production smoke path for each completed workflow.
 
 The first executable Phase 9 slice is complete only when it proves local-time materialization across ordinary and daylight-saving dates, schedule pause/cancellation, duplicate-materialization prevention, authorized snooze transitions, and concurrent due-row claim safety. It must also prove profile RLS isolation, absence of cross-profile composite-FK writes, rebuildable daily metrics, idempotent inventory movement insertion, one-open-refill-alert behavior, identifier-only outbox payloads, and authorization denials for missing profile capabilities.
 

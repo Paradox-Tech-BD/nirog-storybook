@@ -1,7 +1,8 @@
 # OCR Worker Lease, Result, and Review Contract
 
-**Status:** implemented, verified, and deployed as Core commit `7a29173`; a concrete OCR-engine worker service remains deliberately deferred.  
-**Depends on:** Core commit `d6d5505`, clinical migration `0009_prescription_evidence_ocr.sql`, clinical migration `0010_ocr_worker_boundary.sql`, and the sealed `NIROG_INTERNAL_WORKER_SECRET` API runtime configuration.
+**Status:** implemented, verified, and deployed as Core commit `863aa1c`; the concrete OCR-engine worker service remains deliberately deferred until the ML team delivers real results.
+
+**Depends on:** Core commits `d6d5505` and `7a29173`, clinical migrations `0009_prescription_evidence_ocr.sql`, `0010_ocr_worker_boundary.sql`, and `0015_ocr_result_provenance.sql`, plus the sealed `NIROG_INTERNAL_WORKER_SECRET` API runtime configuration.
 
 > **Non-authority rule:** the OCR worker processes a job Core already selected. It does not obtain patient authority, query clinical tables, choose evidence, accept client input, or write a regimen. Core keeps every clinical state transition, RLS context, and audit/outbox record.
 
@@ -33,6 +34,8 @@ These endpoints are intentionally outside the Clerk-facing route family. Each re
 
 The first result shape permits `succeeded`, `retryable_failure`, and `permanent_failure`. A successful result may contain bounded raw text and candidate medication/dose/frequency strings, which are stored only in `clinical.ocr_extractions` as `pending_review`. A retryable or permanent failure accepts only a controlled failure code from a server allowlist. The worker cannot prescribe, create a regimen, edit a dose, or nominate its own retry time.
 
+Every result also carries a machine-readable provenance marker. Real ML output uses `resultSource: "ml"` and must omit `demoFixtureId`. A mock or demo result uses `resultSource: "demo"` and must include a fixture identifier matching `demo.[A-Za-z0-9._-]{1,127}`. Core rejects the inverse combinations before any repository write; the database constraint repeats the same invariant. Demo output is advisory test evidence only and cannot become medication authority or trigger a regimen, dose, reminder, or refill action.
+
 ## 4. Human review and reconciliation
 
 An authorized profile owner may list bounded extraction candidates and explicitly mark an extraction `accepted` or `rejected`. Review never changes a prescription or regimen. A later, separate `regimen.write` command may use a reviewed candidate as user-entered input to create or update a manual regimen, leaving an auditable human decision between OCR and clinical action.
@@ -59,6 +62,6 @@ sequenceDiagram
 
 ## 5. Safe event and audit policy
 
-Audit/outbox evidence can record only profile, evidence, job, extraction, and actor identifiers; transition status; attempt count; and controlled failure/review codes. It must never record a lease token, secret, R2 key/URL, OCR text, candidate strings, model/provider identity, prompt, checksum, or image bytes.
+Audit/outbox evidence can record only profile, evidence, job, extraction, and actor identifiers; transition status; attempt count; controlled failure/review codes; and the non-sensitive `resultSource`/`demoFixtureId` provenance markers. It must never record a lease token, secret, R2 key/URL, OCR text, candidate strings, model/provider identity, prompt, checksum, or image bytes.
 
-The deployed boundary has API coverage for missing/incorrect secret rejection and a disposable PostgreSQL RLS integration assertion that an internal OCR context is scoped to its selected profile/job. Core lint, strict type-checking, and the full test suite passed locally (`41` passing; disposable-environment suites skipped when unavailable), and GitHub Actions run `32374259187` passed. Railway applied migration `0010_ocr_worker_boundary.sql` through the migrator before activating the matching API revision; public liveness returned HTTP `200`. Lease exclusivity/expiry, stale-token rejection, bounded result validation, retry/dead-letter handling, safe redaction, and owner-only review are implemented in the repository/command boundaries and remain targets for expanded direct integration coverage alongside the concrete OCR-engine worker.
+The deployed boundary has API coverage for missing/incorrect secret rejection and a disposable PostgreSQL RLS integration assertion that an internal OCR context is scoped to its selected profile/job. Core lint, strict type-checking, and the full test suite passed locally (`68` passing; `9` environment-dependent skips). Railway applied migration `0015_ocr_result_provenance.sql` through the migrator before activating the matching API revision; the migrator completed and the API became active and online for commit `863aa1c`. Lease exclusivity/expiry, stale-token rejection, bounded result validation, retry/dead-letter handling, safe redaction, provenance validation, and owner-only review are implemented in the repository/command boundaries and remain targets for expanded direct integration coverage alongside the concrete OCR-engine worker.

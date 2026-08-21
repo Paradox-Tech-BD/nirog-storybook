@@ -1,0 +1,51 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const reviewReceiptFlow = `sequenceDiagram
+  participant User as Authorized profile actor
+  participant Core as Nirog Core
+  participant Lab as OCR/ML Lab
+  participant Reviewer as Human reviewer
+
+  User->>Core: Request correlation for one evidence/job tuple
+  Core->>Core: Check profile permissions and record correlation issuance
+  Core-->>Lab: 5-minute signed assertion, no clinical content
+  Lab->>Reviewer: Mandatory advisory review
+  Reviewer->>Lab: Confirm with actor, timestamp, and reason
+  Lab->>Lab: Hash reason and create trace ID
+  Lab->>Core: Confirmed-only receipt + idempotency key
+  Core->>Core: Verify HMAC, expiry, nonce, trace ID, and provenance
+  Core-->>Lab: Identifier-only receipt acknowledgement
+  Note over Core: No regimen, medication, or diagnosis mutation`;
+
+<Meta title="Nirog / 08 Implementation Inception / 14 Core-linked OCR Review Correlation" />
+
+# Core-linked OCR Review Correlation
+
+The separate OCR/ML Lab can acknowledge that a person completed an advisory review, but it cannot become a clinical authority. Core first issues a short-lived signed assertion for exactly one profile, evidence record, and OCR job. The Lab can then send an **identifier-only** receipt only after its review status is `confirmed`.
+
+## Bounded assertion
+
+Core issues the assertion from the authenticated profile route only after checking `document.read_metadata` and `regimen.read`. Its compact payload binds the profile, evidence, job, Core actor reference, fresh nonce, issuance time, expiry time, and version. It carries no OCR text, medicine candidate, dose, diagnosis hypothesis, image, object key, URL, or clinical instruction.
+
+The assertion uses an HMAC-SHA-256 signature and has a five-minute lifetime. Core validates the signature with a timing-safe comparison when the Lab returns a receipt.
+
+## Human-reviewed, confirmed-only handoff
+
+<MermaidDiagram title="Signed correlation and confirmed-only review receipt" chart={reviewReceiptFlow} />
+
+The Lab must capture a reviewer reference, review timestamp, and review reason before delivery. It hashes the reason with SHA-256, and Core receives the hash rather than the plaintext rationale. A rejected Lab decision is deliberately not forwarded; Core rejects non-confirmed receipt requests independently.
+
+## Replay and provenance controls
+
+Core verifies that the signed assertion is current and matches a real Core correlation. It stores only a hash of the signed nonce and enforces uniqueness for both that hash and the Lab trace identifier. The trace identifier is also the required transport idempotency key.
+
+The receipt retains the existing provenance rule: `demo` requires a `demo.*` fixture identifier, while `ml` must not provide one. The current worker remains demo-only and carries `demo.prescription-v1` as its explicit fixture marker.
+
+## What Core records
+
+Core stores an identifier-only review receipt and emits safe audit/outbox evidence. These records may contain profile, evidence, job, actor, decision, provenance, fixture, and trace identifiers. They never contain a signed assertion, nonce, plaintext reason, OCR text, medication/regimen candidates, diagnosis hypotheses, prompt, model output, image bytes, object-storage reference, or secret.
+
+Most importantly, a valid receipt does **not** create or modify a prescription, regimen, schedule, dose, reminder, refill, or diagnosis. It is an auditable acknowledgement of a human-confirmed advisory review.
+
+Read the full [Core-linked OCR Lab Correlation and Review Receipt Contract](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/20-core-linked-ocr-lab-correlation.md) for the endpoint shapes, validation behavior, release evidence, and failure matrix.

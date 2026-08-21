@@ -2,13 +2,13 @@
 
 **Status:** implemented, verified, and deployed with Core commit `a95511b`; migration `0016_core_linked_ocr_lab_receipts.sql` completed before the matching API rollout.
 
-**Scope:** an explicitly user-authorized, short-lived correlation assertion from Nirog Core to the separate OCR/ML Lab, followed by an identifier-only receipt for a human-confirmed review. This is an evidence/audit boundary. It does not transfer prescription, regimen, dose, reminder, refill, or diagnostic authority.
+**Scope:** an explicitly user-authorized, short-lived correlation assertion from Nirog Core to its private OCR/ML operational runtime, followed by an identifier-only receipt for a human-confirmed review. This is an evidence/audit boundary. It does not transfer prescription, regimen, dose, reminder, refill, or diagnostic authority.
 
 > **Non-authority rule:** Core may acknowledge that an external review was human-confirmed for a Core-selected OCR job. The acknowledgment must never create or alter a medication, prescription, regimen, schedule, dose outcome, refill state, reminder, or diagnosis.
 
 ## 1. Why this boundary exists
 
-The OCR/ML Lab is deliberately separated from Core so that it can operate an advisory extraction, deterministic matching, retrieval, and operator-review pipeline without receiving a direct clinical database connection or authority to mutate Core state. Core therefore issues a narrowly scoped correlation assertion only after an authenticated profile actor has permission to inspect the relevant evidence and regimen context. The Lab may return a receipt only after its own mandatory human review reaches `confirmed`.
+The OCR/ML runtime is deliberately isolated from Core’s clinical transaction process so that it can operate advisory extraction, deterministic matching, retrieval, and operator-review functions without receiving a direct clinical database connection or authority to mutate Core state. This is a **deployment and dependency boundary, not a separate patient-facing product boundary**. `nirog-web` is the primary authenticated evidence and review surface; Core owns the workflow state, authorization, evidence storage, audit/outbox evidence, and every clinical mutation boundary. The private runtime may return a receipt only after its own mandatory human review reaches `confirmed`.
 
 The assertion binds one profile, evidence record, OCR job, and Core actor reference. It contains no image bytes, R2 key or URL, OCR text, candidate medicine name, candidate dosage, diagnosis hypothesis, reason text, model output, or clinical instruction. The receipt carries only provenance, review, version, and trace identifiers needed to make the handoff auditable and replay-safe.
 
@@ -104,6 +104,16 @@ The database stores a hash of the assertion nonce rather than the nonce itself, 
 ## 7. Verification and release order
 
 Focused Core tests cover valid signed delivery, invalid/expired assertions, confirmed-only enforcement, demo-provenance validation, replay-safe receipt recording, and the exclusion of patient/OCR content from audit and outbox payloads. The full Core `pnpm lint`, `pnpm typecheck`, and `pnpm test` gates passed before commit `a95511b` was pushed. Railway completed migration `0016` with `@nirog/migrator` before the matching `@nirog/api` deployment; the OCR worker was subsequently rolled forward and passed its `/health/live` health check. The OCR/ML service’s adapter and confirmed-only delivery guard are separately covered by its unit suite, and its non-mutating live credential probe returned the expected unknown-job `404`, confirming that the deployed Core accepted the sealed internal worker identity.
+
+## 8. Application-surface ownership
+
+| Concern | Owning surface | Explicit exclusion |
+|---|---|---|
+| Evidence upload, OCR status, and user-facing review entry | `nirog-web`, through same-origin server routes to Core | No browser access to internal worker credentials or operational tooling. |
+| Profile authorization, prescription/evidence/job state, review authority, audit, and outbox | Nirog Core | No clinical source of truth in the OCR/ML runtime. |
+| Extraction, candidate matching, evaluation, and private operations observability | Core-owned OCR/ML runtime | No patient-facing standalone Lab product, no regimen or diagnosis mutation. |
+
+The runtime may remain a separately deployed process because LLM/model dependencies, leases, and operational scaling do not belong on the synchronous Core API request path. It must nonetheless be treated as a **Core subsystem**. Its user-facing research console is private operations tooling; it is not part of Nirog’s primary navigation or patient-care experience.
 
 ## References
 

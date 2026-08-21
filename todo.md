@@ -215,11 +215,14 @@ Core commit `7a29173` delivers the worker-facing Phase 8 boundary. It adds forwa
 
 ## Phase 9 — reminders, adherence analytics, and refill workflows
 
-- [ ] Define the reminder, adherence, and refill domain contracts and forward-only clinical migration.
+- [x] Define the reminder, adherence, and refill domain contracts and forward-only clinical migration.
 - [ ] Implement timezone-aware reminder schedules, dose-time windows, snooze state, and idempotent notification dispatch contracts.
 - [ ] Implement profile-scoped daily, weekly, and monthly adherence aggregation plus streak projections from immutable dose outcomes.
 - [ ] Implement stock balances, refill thresholds, alert acknowledgement, and refill-history commands without coupling them to OCR output.
-- [ ] Add RLS, permission, validation, API, outbox, and worker-boundary tests; document the Phase 9 contracts in Storybook.
+- [x] Add the Phase 9 profile-RLS foundation, migration regression guard, and Storybook architecture contract.
+- [ ] Add Phase 9 permission, validation, API, outbox, and deterministic worker-boundary tests with the executable command and query slices.
+
+> **Foundation deployment record:** Core commit `c6fe269` adds migration `0012_reminders_adherence_refills.sql`, Drizzle schema definitions, profile ownership propagation for the existing regimen schedule, and a focused journal/migration regression test. The migration materializes no reminder and sends no notification: it establishes profile-scoped reminder schedule/occurrence, adherence daily/streak, inventory ledger, and refill-alert records only. Local lint, TypeScript, and the complete Core unit suite passed with 47 tests passing and 9 environment-dependent skips. Railway approved and completed the migrator deployment before approving the matching API deployment; the API is online. The next slice is command-layer behavior and deterministic due-work materialization, not external notification-provider delivery.
 
 ## Strapi platform evaluation
 

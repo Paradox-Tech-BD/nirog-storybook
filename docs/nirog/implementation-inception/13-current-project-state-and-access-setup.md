@@ -10,8 +10,9 @@
 
 | Repository or runtime | Current state | What it proves |
 |---|---|---|
-| `nirog-core` | `main` at `863aa1c` | The Core includes the deployed platform-role authority plane, manual medication commands, the evidence/OCR-job foundation, a secret-authenticated worker-facing OCR boundary, and explicit `ml`/`demo` extraction provenance with profile-scoped RLS policies. The normal API still exposes no first-administrator bootstrap route. |
+| `nirog-core` | `main` at `a78d9be` | The Core includes the deployed platform-role authority plane, manual medication commands, the evidence/OCR-job foundation, a secret-authenticated worker-facing OCR boundary, explicit `ml`/`demo` extraction provenance, and a deterministic demo-only worker path with profile-scoped RLS policies. The normal API still exposes no first-administrator bootstrap route. |
 | Railway Core API | Online with `863aa1c` active | Clinical migration `0015_ocr_result_provenance.sql` completed first through the migrator, then the matching API revision became active. Public liveness returned HTTP `200` before this increment and the service remained online after deployment. |
+| Railway OCR worker | Online with `a78d9be` active | The worker requires `OCR_DEMO_FIXTURE_ID=demo.prescription-v1`, emits explicit demo provenance, and does not run a real OCR engine until the ML team delivers approved results. |
 | `nirog-web` | `main` at `3ac4be0` | The Next.js bridge normalizes the Core API base to `/api/v1`, forwards the current Clerk session token, and renders the current account result. |
 | Live Nirog Web | Verified with the preserved signed-in session | Repeated `Refresh record` requests render the verified empty-profile state, preferences, and a correlation ID rather than `401`, `404`, or `500`. |
 | `nirog-storybook` | Canonical `main` and deployment `next` | The incident history, architecture decisions, implementation plans, and this handoff are documented in the canonical repository and deployment branch. |

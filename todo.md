@@ -216,16 +216,18 @@ Core commit `7a29173` delivers the worker-facing Phase 8 boundary. It adds forwa
 ## Phase 9 — reminders, adherence analytics, and refill workflows
 
 - [x] Define the reminder, adherence, and refill domain contracts and forward-only clinical migration.
-- [ ] Implement timezone-aware reminder schedules, dose-time windows, snooze state, and idempotent notification dispatch contracts.
+- [x] Implement timezone-aware reminder schedules, dose-time windows, snooze state, and idempotent identifier-only due-dispatch contracts.
 - [x] Implement persisted profile-scoped daily adherence metrics and streak projections from immutable dose outcomes.
 - [ ] Add profile-scoped weekly and monthly adherence aggregation read models.
-- [ ] Implement stock balances, refill thresholds, alert acknowledgement, and refill-history commands without coupling them to OCR output.
+- [x] Implement stock balances, refill thresholds, alert acknowledgement, and dose-linked inventory movements without coupling them to OCR output.
+- [ ] Add the profile-scoped refill-history query read model.
 - [x] Add the Phase 9 profile-RLS foundation, migration regression guard, and Storybook architecture contract.
-- [ ] Add the remaining Phase 9 permission, validation, API, outbox, and deterministic worker-boundary tests with the executable command and query slices.
+- [x] Add Phase 9 permission, validation, API, outbox, and deterministic worker-boundary tests for the implemented command and query slices.
+- [ ] Run the bounded authenticated smoke path and database-backed concurrent-claim/RLS checks against the deployed test environment.
 
 > **Foundation deployment record:** Core commit `c6fe269` adds migration `0012_reminders_adherence_refills.sql`, Drizzle schema definitions, profile ownership propagation for the existing regimen schedule, and a focused journal/migration regression test. The migration materializes no reminder and sends no notification: it establishes profile-scoped reminder schedule/occurrence, adherence daily/streak, inventory ledger, and refill-alert records only. Local lint, TypeScript, and the complete Core unit suite passed with 47 tests passing and 9 environment-dependent skips. Railway approved and completed the migrator deployment before approving the matching API deployment; the API is online. The next slice is command-layer behavior and deterministic due-work materialization, not external notification-provider delivery.
 
-> **Adherence deployment record:** Core commits `d7694fd`, `4d350fd`, and `6616e78` add and repair migration `0014_adherence_timezone_metric_key.sql`, persist daily metrics and streaks after dose recording, and expose authorized daily-metric and streak reporting routes. Migration 0014 completed successfully in Railway after the old table-level uniqueness constraint was corrected to a constraint drop. The final Core verification passed with `pnpm lint`, strict type-checking, and 58 passing tests (9 environment-dependent skips). The API deployment for the adherence slice was approved after the migrator completed and is now building toward the online rollout. Remaining work is due-row delivery, snooze/acknowledgement, dose-linked inventory deduction, refill-alert acknowledgement, and the associated controlled smoke tests.
+> **Adherence and Phase 9 deployment record:** Core commits `d7694fd`, `4d350fd`, and `6616e78` add and repair migration `0014_adherence_timezone_metric_key.sql`, persist daily metrics and streaks after dose recording, and expose authorized daily-metric and streak reporting routes. Migration 0014 completed successfully in Railway after the old table-level uniqueness constraint was corrected to a constraint drop. Subsequent Core commits `1520edd`, `80e03a5`, `39d5f3f`, and `c41659d` add deterministic due-intent dispatch, reminder snooze/acknowledgement transitions, source-dose-linked inventory deduction, refill-alert acknowledgement, and integration coverage. The focused Phase 9 verification passes with 29 tests across API, dispatcher, materializer, configuration, and inventory suites; the complete Core verification passes with 61 tests and 9 environment-dependent skips. Railway has the due worker enabled in the dispatcher test environment, and the latest inventory API revision `feat(inventory): link dose consumption and acknowledge refill alerts` is active and successful. Remaining work is weekly/monthly adherence read models, refill-history reads, and controlled authenticated smoke/concurrency/RLS checks.
 
 ## Strapi platform evaluation
 

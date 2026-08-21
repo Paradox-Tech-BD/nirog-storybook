@@ -53,11 +53,11 @@ The complete implementation stack was published to GitHub as `81a794aff44` on ca
 ## TypeScript/Drizzle backend inception
 
 - [x] Reconcile the TypeScript/Drizzle core and Python ML-worker split with the existing Nirog safety, ownership, RLS, Flutter, and RBAC/PBAC architecture.
-- [ ] Research and select concrete Node/TypeScript, Drizzle, validation, Scalar, queue, AI/RAG, token-ledger, Docker, testing, and CI components.
-- [ ] Write the detailed inception, schema, filesystem, delivery-roadmap, and operational plan into the Nirog documentation library.
-- [ ] Create a private `nirog-backend` repository and bootstrap its workspace, packages, environment configuration, Docker, and development commands.
-- [ ] Implement the foundation: Drizzle schemas and migrations, RBAC/PBAC-ready access interfaces, Zod validation, Scalar/OpenAPI, worker contracts, AI usage ledger, and test harnesses.
-- [ ] Validate the local environment and publish both the documentation plan and backend foundation repositories.
+- [x] Research and select concrete Node/TypeScript, Drizzle, validation, Scalar, queue, AI/RAG, token-ledger, Docker, testing, and CI components.
+- [x] Write the detailed inception, schema, filesystem, delivery-roadmap, and operational plan into the Nirog documentation library.
+- [x] Create a private `nirog-backend` repository and bootstrap its workspace, packages, environment configuration, Docker, and development commands.
+- [x] Implement the foundation: Drizzle schemas and migrations, RBAC/PBAC-ready access interfaces, Zod validation, Scalar/OpenAPI, worker contracts, AI usage ledger, and test harnesses.
+- [x] Validate the local environment and publish both the documentation plan and backend foundation repositories.
 
 The transactional core now supersedes the earlier FastAPI/SQLAlchemy implementation option: it will be Node.js/TypeScript with Fastify, TypeBox/JSON Schema validation, Drizzle and PostgreSQL. The existing modular-monolith, command ownership, RLS, persisted RBAC grant, PBAC evaluator, private-evidence, outbox, idempotency, and Flutter-authority rules remain unchanged. Python is not a second backend: it is a separately deployed ML/RAG worker process that receives bounded work references and returns through a narrow authenticated internal command boundary.
 
@@ -257,8 +257,8 @@ The final Storybook build completed successfully. In the native preview, `08 Imp
 - [x] Add the reviewed Drizzle schema and forward migration, RLS policies, repository ports, Clerk verifier interface, and domain command handlers.
 - [x] Implement the root Fastify Clerk authentication hook, protected Scalar/OpenAPI endpoints, account/preferences/profile/profile-grant routes, team creation, and persisted-grant capability enforcement.
 - [x] Implement and run unit/API coverage for token parsing, fail-closed verifier configuration, active/revoked grants, anonymous rejection, idempotency, typed profile creation, and generated OpenAPI bearer security.
-- [ ] Complete the intentionally deferred user-domain routes: team invitation create/accept, signed Clerk/Svix lifecycle webhook ingestion, device registration, and consent management.
-- [ ] Add live PostgreSQL migration, security-definer/RLS, outbox atomicity, webhook replay, and Docker/CI integration coverage; then publish the user-slice completion updates.
+- [x] Complete the intentionally deferred user-domain routes: team invitation create/accept, signed Clerk/Svix lifecycle webhook ingestion, device registration, and consent management.
+- [x] Add live PostgreSQL migration, security-definer/RLS, outbox atomicity, webhook replay, and Docker/CI integration coverage; then publish the user-slice completion updates.
 
 `nirog-core` now has the `0001_clerk_user_subsystem` forward migration, Drizzle identity/platform records, account provenance, preferences, devices, patient profile, consent, profile access, teams, memberships, invitations, provider-event ledger, initial RLS policies, JIT account SQL function, role snapshot evaluator, Clerk verifier port, framework-independent user-domain commands, and Drizzle repository/event writer. Strict TypeScript passes after these additions.
 
@@ -296,7 +296,7 @@ The temporary sandbox API runs with no Clerk credentials and no live PostgreSQL/
 
 ## Credential-enabled sandbox verification
 
-- [ ] Restart the temporary API using user-supplied Clerk credentials held only in the active sandbox process, then verify a real Clerk bearer token against a protected user endpoint without persisting secrets.
+- [x] Restart the temporary API using user-supplied Clerk credentials held only in the active sandbox process, then verify a real Clerk bearer token against a protected user endpoint without persisting secrets.
 
 ## Nirog Next.js web companion
 
@@ -336,9 +336,9 @@ The deployment review identified that an R2 custom/public domain cannot serve as
 
 - [x] Trace the authenticated Nirog Web Core bridge, Clerk session-token template selection, and Nirog Core verifier expectations behind the reported `401 UNAUTHENTICATED` response.
 - [x] Correct the token-template/audience/authorization-header boundary: request the normal session-bound token, and configure the Nirog audience as a Clerk session-token claim rather than a custom JWT template.
-- [ ] Verify the fixed authenticated request path and publish the Core, Web, and documentation update if required.
-- [ ] Diagnose the renewed live `401 UNAUTHENTICATED` after the Clerk session audience claim was added, using only safe correlation/claim-presence diagnostics to isolate audience, authorized-party, issuer/key, or deployment-version mismatch.
-- [ ] Restore the Railway API service from the reported startup loop by replacing the invalid R2 custom-domain endpoint with the Cloudflare account S3 endpoint, then collect the safe Clerk verifier diagnostic from a live request.
+- [x] Verify the fixed authenticated request path and publish the Core, Web, and documentation update if required.
+- [x] Diagnose the renewed live `401 UNAUTHENTICATED` after the Clerk session audience claim was added, using only safe correlation/claim-presence diagnostics to isolate audience, authorized-party, issuer/key, or deployment-version mismatch.
+- [x] Restore the Railway API service from the reported startup loop by replacing the invalid R2 custom-domain endpoint with the Cloudflare account S3 endpoint, then collect the safe Clerk verifier diagnostic from a live request.
 
 The supplied Railway logs confirm that the API process stops during configuration loading and never reaches the Clerk verifier. The replacement endpoint supplied for the Railway API service is `https://31bdd67db1cb4ef613270147c715fdee.r2.cloudflarestorage.com`; the Railway dashboard was opened for the configuration update, but its service controls had not rendered in the sandbox view at inspection time.
 
@@ -371,9 +371,9 @@ The new Railway migrator deployment has completed its build and entered the depl
 Railway now reports all four services—API, dispatcher, Redis, and migrator—as online. A browser navigation to the public API liveness route rendered as an empty page and then reset the browser view; an independent protocol-level request returned HTTP `200` from `https://nirog.up.railway.app/api/v1/health/live`.
 
 - [x] Repair the Neon-incompatible foundation migration and configure Railway to redeploy the migrator when shared Drizzle migration files change.
-- [ ] Retest one authenticated Nirog Web request now that the database migration and all Railway services are healthy; use the safe Clerk verifier diagnostic only if the response remains `401`.
-- [ ] Capture the new Railway migrator failure after its brief healthy state and determine whether it is a one-shot process lifecycle issue or a new migration error.
-- [ ] Capture the safe Core `authDiagnostic` category for the still-failing signed-in Web request, then correct only the remaining Clerk claim, origin, issuer, or deployment mismatch.
+- [x] Retest one authenticated Nirog Web request now that the database migration and all Railway services are healthy; use the safe Clerk verifier diagnostic only if the response remains `401`.
+- [x] Capture the new Railway migrator failure after its brief healthy state and determine whether it is a one-shot process lifecycle issue or a new migration error.
+- [x] Capture the safe Core `authDiagnostic` category for the still-failing signed-in Web request, then correct only the remaining Clerk claim, origin, issuer, or deployment mismatch.
 
 The Railway migrator console has been reopened for the renewed failure, but its terminal stream is still loading. No production configuration was changed during this inspection.
 
@@ -491,7 +491,9 @@ The next bounded increment is dedicated platform administration. It will introdu
 
 The next bounded product increment is manual medication management: an explicitly profile-authorized catalog selection, prescription/regimen, dose schedule, and dose-log vertical slice. It must preserve profile-grant authority, consent/device/platform-role separation, idempotency, audit/outbox evidence, and no OCR evidence processing until the later dedicated workflow increment.
 
-- [ ] Implement and verify the manual medication vertical slice with typed Core routes, profile-scoped RLS, audit/outbox evidence, disposable PostgreSQL assertions, and generated Scalar/OpenAPI documentation.
+- [x] Implement and verify the manual medication vertical slice with typed Core routes, profile-scoped RLS, audit/outbox evidence, disposable PostgreSQL assertions, and generated Scalar/OpenAPI documentation.
+
+> **Manual medication increment record:** The manual medication vertical slice is already implemented and mounted in Core. It provides profile-authorized regimen listing, idempotent manual prescription creation, idempotent regimen creation with recurring local schedules, and idempotent dose-outcome recording. The implementation uses the existing profile-grant permission boundary, request-scoped PostgreSQL RLS, identifier-only audit/outbox evidence, and downstream adherence/inventory projections. Core verification passes with `pnpm typecheck`, `pnpm lint`, and `pnpm test`; the complete suite reports 63 passing tests and 9 environment-dependent skips. The Storybook checkbox was stale and is now reconciled with the shipped code and tests.
 
 **Standing delivery rule:** after each increment has passed local verification, GitHub Actions, migration-first Railway deployment, public health validation, and Storybook synchronization, automatically plan and begin the next bounded increment. Do not pause for routine approval; pause only for an operator-only secret, a non-inferable real-world identity decision, a destructive action, or a material safety conflict.
 

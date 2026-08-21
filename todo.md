@@ -217,12 +217,15 @@ Core commit `7a29173` delivers the worker-facing Phase 8 boundary. It adds forwa
 
 - [x] Define the reminder, adherence, and refill domain contracts and forward-only clinical migration.
 - [ ] Implement timezone-aware reminder schedules, dose-time windows, snooze state, and idempotent notification dispatch contracts.
-- [ ] Implement profile-scoped daily, weekly, and monthly adherence aggregation plus streak projections from immutable dose outcomes.
+- [x] Implement persisted profile-scoped daily adherence metrics and streak projections from immutable dose outcomes.
+- [ ] Add profile-scoped weekly and monthly adherence aggregation read models.
 - [ ] Implement stock balances, refill thresholds, alert acknowledgement, and refill-history commands without coupling them to OCR output.
 - [x] Add the Phase 9 profile-RLS foundation, migration regression guard, and Storybook architecture contract.
-- [ ] Add Phase 9 permission, validation, API, outbox, and deterministic worker-boundary tests with the executable command and query slices.
+- [ ] Add the remaining Phase 9 permission, validation, API, outbox, and deterministic worker-boundary tests with the executable command and query slices.
 
 > **Foundation deployment record:** Core commit `c6fe269` adds migration `0012_reminders_adherence_refills.sql`, Drizzle schema definitions, profile ownership propagation for the existing regimen schedule, and a focused journal/migration regression test. The migration materializes no reminder and sends no notification: it establishes profile-scoped reminder schedule/occurrence, adherence daily/streak, inventory ledger, and refill-alert records only. Local lint, TypeScript, and the complete Core unit suite passed with 47 tests passing and 9 environment-dependent skips. Railway approved and completed the migrator deployment before approving the matching API deployment; the API is online. The next slice is command-layer behavior and deterministic due-work materialization, not external notification-provider delivery.
+
+> **Adherence deployment record:** Core commits `d7694fd`, `4d350fd`, and `6616e78` add and repair migration `0014_adherence_timezone_metric_key.sql`, persist daily metrics and streaks after dose recording, and expose authorized daily-metric and streak reporting routes. Migration 0014 completed successfully in Railway after the old table-level uniqueness constraint was corrected to a constraint drop. The final Core verification passed with `pnpm lint`, strict type-checking, and 58 passing tests (9 environment-dependent skips). The API deployment for the adherence slice was approved after the migrator completed and is now building toward the online rollout. Remaining work is due-row delivery, snooze/acknowledgement, dose-linked inventory deduction, refill-alert acknowledgement, and the associated controlled smoke tests.
 
 ## Strapi platform evaluation
 

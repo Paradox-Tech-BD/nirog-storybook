@@ -1,6 +1,6 @@
 # Phase 9 Reminder, Adherence, and Refill Foundation
 
-**Status:** schema foundation, local-time materialization, and the inventory/refill API are deployed. Due-notification delivery and persisted adherence reporting remain intentionally incomplete.
+**Status:** schema foundation, local-time materialization, inventory/refill API, migration 0014, persisted adherence projections, and authorized adherence reporting are deployed. Due-notification delivery, acknowledgement workflows, and dose-linked inventory deduction remain intentionally incomplete.
 
 > **Design position:** a medication schedule expresses the expected local-time pattern; a materialized reminder occurrence expresses one immutable due opportunity; a dose outcome remains the clinical source record; adherence metrics and streaks are rebuildable projections; inventory movements are an append-only ledger; and a refill alert is a workflow state, not a medication decision.
 
@@ -98,7 +98,7 @@ Migration `0012_reminders_adherence_refills.sql` performs the first Phase 9 foun
 - `adherence_daily_metrics` and `adherence_streaks` for rebuildable user-visible analytics.
 - `regimen_inventories`, `inventory_movements`, and `refill_alerts` for stock and refill workflow.
 
-It also creates the restricted reminder-dispatcher RLS helper, grants only necessary DML to `nirog_api`, and enables profile-context policies on the new tables. The migration has no device-provider credential, no notification body, no model data, and no direct patient notification side effect.
+It also creates the restricted reminder-dispatcher RLS helper, grants only necessary DML to `nirog_api`, and enables profile-context policies on the new tables. Migration `0014_adherence_timezone_metric_key.sql` then replaces the table-level daily-metric uniqueness key with the timezone-inclusive key and is now applied in Neon. The migrations have no device-provider credential, no notification body, no model data, and no direct patient notification side effect.
 
 ## 9. Deployed Phase 9 increment record and remaining gates
 
@@ -106,9 +106,9 @@ The deployed materializer increment adds migration `0013_reminder_materializer_b
 
 The deployed inventory increment adds the profile-authorized `/inventory` and `/inventory/refills` API surface. Mutations require an idempotency key, use decimal quantities, write an audit record with identifiers only, and publish no balance or medicine-name text in the event payload. Automated stock deduction, alert acknowledgement, and patient-facing provider delivery are not yet enabled.
 
-The medication-domain package now contains pure, tested daily-adherence and streak calculations. Persisting these calculations into `clinical.adherence_daily_metrics` and `clinical.adherence_streaks`, plus exposing authorized daily/weekly/monthly reporting queries, remains the next implementation slice.
+The medication-domain package now contains pure, tested daily-adherence and streak calculations. Migration `0014_adherence_timezone_metric_key.sql` makes the daily metric identity `(regimen_id, local_date, timezone)` so one regimen can be projected independently in different IANA timezone contexts. Dose recording now recomputes and persists the local-day metric and streak in the same medication transaction. Authorized reporting exposes the persisted daily metrics and streak projection; weekly and monthly aggregates remain derivable read models rather than separate mutable tables.
 
-The remaining acceptance gates are the controlled due-row/outbox flow, snooze and acknowledgement state transitions, persisted adherence recalculation and report isolation, idempotent dose-linked inventory deduction, refill-alert acknowledgement, and a bounded authenticated production smoke path for each completed workflow.
+The remaining acceptance gates are the controlled due-row/outbox flow, snooze and acknowledgement state transitions, idempotent dose-linked inventory deduction, refill-alert acknowledgement, and a bounded authenticated production smoke path for each completed workflow. Adherence persistence and daily/streak report isolation are now covered by the deployed implementation and Core tests.
 
 The first executable Phase 9 slice is complete only when it proves local-time materialization across ordinary and daylight-saving dates, schedule pause/cancellation, duplicate-materialization prevention, authorized snooze transitions, and concurrent due-row claim safety. It must also prove profile RLS isolation, absence of cross-profile composite-FK writes, rebuildable daily metrics, idempotent inventory movement insertion, one-open-refill-alert behavior, identifier-only outbox payloads, and authorization denials for missing profile capabilities.
 

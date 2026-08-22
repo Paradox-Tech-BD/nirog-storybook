@@ -37,6 +37,14 @@ Core accepts Clerk-backed identity at its public boundary and resolves profile-s
 
 The authorization design maintains room for policy-based rules without weakening the current role and grant model. The request purpose, resource scope, and explicit permission are part of application-layer decisions rather than scattered route conditionals.
 
+### Delegated-profile discovery and self access context
+
+The account projection includes profiles directly owned by the caller and profiles with an **active, unexpired delegated grant** for that caller. This lets a default caregiver discover an authorized profile without turning the user interface into an out-of-band relationship directory.
+
+Core also exposes a self-only profile access-context query. It requires `profile.read` and returns only the caller’s relationship to the requested profile: either direct owner access or an active delegated role with that caller’s permission snapshot. It does not return another account’s identity or permissions. The separate full-grant roster query remains protected by `share.manage`.
+
+> A default caregiver may see their own authorized profile relationship, evidence provenance, and draft state. They do not gain a complete caregiver roster, relationship-management authority, or regimen-write capability merely by opening the Web companion.
+
 ## Data and transaction integrity
 
 PostgreSQL is protected with row-level security and application-level scope enforcement. Drizzle migrations define forward database changes. Clinical writes use transactions so the domain update, safe audit record, and identifier-only outbox event either commit together or do not commit at all.

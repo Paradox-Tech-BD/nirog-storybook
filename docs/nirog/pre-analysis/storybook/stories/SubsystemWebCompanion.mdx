@@ -36,11 +36,19 @@ The prescription-evidence workspace lets a signed-in user select a profile and p
 
 The interface distinguishes the user-visible stages of **authorization**, **transfer**, **queueing**, and **completion**. Client-side validation checks the permitted file type and size before initiating the workflow. A failed upload does not silently create a completed evidence record, and a failed UI attempt is not described as a clinical change.
 
-## Asynchronous status experience
+## Stable clinical read model
 
-When evidence is processing, the workspace refreshes Core-authoritative status on a five-second cadence. It reads profile metadata, prescriptions, evidence metadata, extraction metadata, and medication drafts through the server bridge. The UI does not infer a successful extraction from a spinner, upload acknowledgement, or worker request. It waits for persisted Core state.
+The workspace performs a stable, explicit Core-read bootstrap instead of recursively recreating its own loader from React state updates. It reads the account/profile projection, prescription list, evidence metadata, extraction metadata, medication drafts, and permitted care-circle summary through the server bridge. Independent downstream reads are allowed to resolve separately, so a partial status failure does not erase the whole workspace or leave the user facing an unexplained blank screen.
 
-The user can refresh manually, receive safe error messages, and see that a draft is pending rather than being asked to make decisions before a candidate exists. This prevents the browser from becoming an untracked source of workflow truth.
+The UI shows a deliberate **refreshing** state while this profile-scoped sequence completes, then changes to a live record state. A person can refresh manually and receive a safe error message. The browser does not infer successful extraction from an upload acknowledgement, worker request, or spinner; it waits for persisted Core state.
+
+This distinction matters in terminal states. A received evidence file with a rejected processing outcome is rendered as a visible status with no extraction and no draft. It is not presented as a completed prescription, and the interface does not invite the user to bypass the backend’s retry or attempt policy by manually creating hidden workflow data.
+
+## Care-circle access experience
+
+The authenticated Web navigation includes a separate **Care circle** destination. It shows the signed-in actor’s own relationship to the selected profile, rather than treating a caregiver roster as generally readable account data. Core returns an owner-or-grant access designation and, for an active grant, the caller’s own role and permission snapshot. The page intentionally excludes joined names, emails, avatars, and other members’ permission sets.
+
+This solves a practical default-caregiver boundary. A caregiver with `profile.read` can discover an active delegated profile and see their own access context. The complete grant roster remains a manager-only capability protected by `share.manage`; its failure is not used to hide the caregiver’s own authorized care workspace. Neither page grants `regimen.write`, changes a relationship, or blocks automatic extraction.
 
 ## Confidence and correction experience
 
@@ -60,6 +68,8 @@ Patients and authorized caregivers can submit only when Core grants the applicab
 
 The Web companion uses problem responses for authentication, configuration, token, and Core-reachability failures. It uses per-action UI state for upload and draft-submission failures, and it reports that a failed submission did not create a regimen. UI errors are not a substitute for server-side authorization or idempotency.
 
+The Web companion also treats an unavailable manager-only grant roster as a bounded partial-read outcome. A default caregiver can still receive the self-only access context provided by Core. This prevents an access-governance permission from becoming an accidental prerequisite for ordinary profile visibility.
+
 ## Source of truth
 
-The implemented boundary is in the [Web Core proxy](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/lib/core-proxy.ts), [evidence workspace](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/components/prescription-evidence-workspace.tsx), and the Web route-policy tests. Never document session tokens, server variables, private API origins, or user-specific evidence.
+The implemented boundary is in the [Web Core proxy](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/lib/core-proxy.ts), [stable read model](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/lib/core-read-model.ts), [evidence workspace](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/components/prescription-evidence-workspace.tsx), [care-circle workspace](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/components/care-circle-workspace.tsx), and the Web route-policy tests. Never document session tokens, server variables, private API origins, or user-specific evidence.

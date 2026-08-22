@@ -1,0 +1,38 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const occurrenceTimeline = `sequenceDiagram
+  participant Client as Authenticated client
+  participant Core as Core API
+  participant Scope as Profile capability and RLS scope
+  participant Occurrence as reminder_occurrences
+
+  Client->>Core: GET bounded occurrence window
+  Core->>Core: Validate ISO bounds, 31-day maximum, 1–100 limit
+  Core->>Scope: Require notification.manage
+  Scope-->>Core: Scoped profile access
+  Core->>Occurrence: profile + regimen + [from, to), ordered
+  Occurrence-->>Core: timeline projections
+  Core-->>Client: IDs, schedule instant, windows, workflow state`;
+
+<Meta title="Nirog / 08 Implementation Inception / 08 Phase 9 Reconciliation and Timeline" />
+
+# Phase 9 Reconciliation and Reminder Timeline
+
+The Core continuation has been reconciled through commit `63c8c6b`. It already includes persisted adherence reporting, reminder due-intent dispatch, snooze and acknowledgement, inventory movement history, refill-alert acknowledgement, and the review-gated OCR provenance/receipt workflow. The reconciliation did not reimplement those slices.
+
+The additive Core release introduces the missing patient-facing occurrence timeline: a bounded, profile-authorized route that returns the concrete reminder occurrence ID, scheduled instant, delivery window, and workflow state required to use the existing snooze and acknowledgement actions.
+
+<MermaidDiagram title="Read-only reminder occurrence timeline" chart={occurrenceTimeline} />
+
+## Endpoint contract
+
+`GET /api/v1/profiles/{profileId}/regimens/{regimenId}/reminder-occurrences` requires the existing `notification.manage` profile capability. It accepts `from`, `to`, and an optional `limit`; the interval is start-inclusive and end-exclusive, must be no more than 31 days, and defaults to 50 results with a maximum of 100.
+
+The response uses the standard Core success envelope. It exposes identifiers, `scheduledFor`, `windowOpensAt`, `windowClosesAt`, state, and only applicable state-transition timestamps. It excludes notification text, dosage, device token, OCR text, signed URLs, and provider credentials.
+
+## Safety position
+
+An occurrence remains a workflow record. A read, delivery intent, snooze, or acknowledgement never creates a dose log, modifies inventory, changes a prescription, or claims medication was taken. The provider adapter remains intentionally separate: the dispatcher emits only identifier-only due intents until a future provider-specific and credential-sealed delivery increment is approved.
+
+The detailed [Phase 9 reconciliation and reminder timeline record](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/20-phase9-reconciliation-and-reminder-timeline.md) includes the migration comparison, repository semantics, verification record, and deployment-status distinction.

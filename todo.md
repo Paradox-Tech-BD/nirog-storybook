@@ -1,5 +1,13 @@
 # Nirog Software and Access Architecture
 
+## Continuation reconciliation
+
+- [x] Reconcile the referenced Schema Development Continuation work with current Core, web companion, Storybook, and production health state before selecting another backend increment.
+- [x] Restore authenticated Core synchronization, fast-forward from `105eb6f` to the continuation history, and compare the local `0014_adherence_timezone_metric_key` draft with the published migration before removing the duplicate local files.
+- [x] Publish the profile-authorized reminder occurrence timeline as Core commit `63c8c6b`, including generated OpenAPI, bounded read validation, and API coverage.
+
+> **Reconciliation record — 22 August 2026:** upstream Core already contains the timezone-aware adherence uniqueness repair as `0014_adherence_timezone_metric_key`; its correct PostgreSQL operation drops the original unique **index**, rather than a table constraint. The continuation also includes persisted adherence calculation and reporting, reminder due intent dispatch plus snooze/acknowledgement, inventory movement history and refill-alert acknowledgement, manual medication normalization, OCR provenance, and read-only receipt audit. The older local migration draft was preserved outside the repository and removed only after its semantic difference was confirmed. Core is clean and synchronized at `63c8c6b`. The Railway public health route returned HTTP 200 after the push; the Railway project canvas had not yet rendered a revision label, so publication records the API release as pushed and health-checked rather than claiming a revision-specific deployment confirmation.
+
 - [x] Review current modular-system, identity, profile authorization, security, validation, workflow, and data ownership contracts.
 - [x] Research RBAC and policy-based access-control evolution patterns and define the Nirog-specific architecture taxonomy.
 - [x] Write the new `docs/nirog/software-access-architecture/` documentation set with modular design, RBAC baseline, validation, audit, and future policy-extension guidance.

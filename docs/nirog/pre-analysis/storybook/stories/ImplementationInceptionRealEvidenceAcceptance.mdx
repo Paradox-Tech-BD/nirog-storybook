@@ -1,0 +1,36 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const acceptanceFlow = `sequenceDiagram
+  participant Person as Authenticated person
+  participant Web as Web companion
+  participant Core as Nirog Core
+  participant Worker as Isolated OCR worker
+
+  Person->>Web: Create profile context
+  Web->>Core: Idempotent profile create
+  Person->>Web: Submit supported image for review
+  Web->>Core: Authorize and complete evidence upload
+  Core->>Worker: Identifier-bounded OCR work
+  Worker->>Core: Review-only result
+  Core-->>Web: Processed evidence + pending review`;
+
+<Meta title="Nirog / 08 Implementation Inception / 09 Real Prescription Evidence Acceptance" />
+
+# Real Prescription Evidence Acceptance
+
+The real authenticated evidence path is now accepted. An account without a profile receives a Core-authoritative profile-onboarding control; once a profile exists, the companion creates an isolated prescription container, validates the selected document, and submits it through the secure evidence flow.
+
+<MermaidDiagram title="Authenticated evidence-to-review acceptance flow" chart={acceptanceFlow} />
+
+## Observed outcome
+
+The supplied prescription image completed secure upload, evidence registration, asynchronous dispatch, isolated OCR, and Core receipt. The final Core-authoritative state was **processed evidence** with one **pending review** extraction.
+
+No medication, regimen, reminder, inventory, diagnosis, or clinical confirmation was created. The status refresh control and processing-state polling keep the companion current without fabricating results or re-uploading the document.
+
+## Clinical safety position
+
+`pending_review` is an evidence workflow state, not a clinical instruction. Any future medication-confirmation flow must be a separately authorized command with explicit review provenance and must never transfer OCR output automatically into a regimen.
+
+The detailed [real prescription evidence acceptance record](https://github.com/Paradox-Tech-BD/nirog-storybook/blob/main/docs/nirog/implementation-inception/21-real-prescription-evidence-acceptance.md) documents the complete boundary, real acceptance result, and the two web companion changes.

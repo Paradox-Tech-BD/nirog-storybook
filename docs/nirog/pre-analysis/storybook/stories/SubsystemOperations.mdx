@@ -1,0 +1,52 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const rollout = `flowchart LR
+  Migration[Forward migration] --> VerifySchema[Verify migration completion]
+  VerifySchema --> Core[Deploy Core/API contract]
+  Core --> Worker[Deploy or verify ML worker]
+  Worker --> Dispatcher[Enable dispatcher delivery]
+  Dispatcher --> Observe[Observe safe aggregate status]
+  Observe -->|success| Document[Record verified outcome]
+  Observe -->|provider failure| Retry[Allow bounded automatic retry]
+  Retry --> Observe`;
+
+<Meta title="Nirog / 10 Subsystem Reference / 07 Operations and Release Safety" />
+
+# Operations and Release Safety
+
+Nirog operations are part of the system architecture. A service can be healthy while a clinical workflow is incomplete; a deployed change can be valid while an external provider prevents an end-to-end result. Documentation must name that distinction rather than collapsing it into a generic “deployed” label.
+
+<MermaidDiagram title="Migration-first asynchronous release sequence" chart={rollout} />
+
+## Service responsibility model
+
+The API owns public and internal Core contracts, authorization, clinical transactions, and evidence-storage authorization. The migrator applies forward schema changes before services rely on new tables or fields. The dispatcher owns outbox delivery and stale-lease recovery. The ML worker owns bounded extraction and result callbacks. Private evidence storage holds evidence objects, and external Redis supports shared rate-limit concerns.
+
+No single runtime should acquire another runtime’s broad credentials merely to simplify deployment. In particular, the worker has no database, broad evidence-store, or Clerk credentials. Deployment configuration must retain this separation.
+
+## Release order
+
+Schema-dependent releases follow a migration-first discipline. Apply and verify the forward migration, deploy the matching Core contract, verify the worker contract and health boundary, then enable or verify dispatcher delivery. A rollback of application code does not roll back already-applied database state; migration planning is therefore forward-only and compatibility-aware.
+
+Each release needs a bounded acceptance observation. Health endpoints confirm runtime liveness, but they do not prove user authorization, outbox publication, worker callbacks, extraction persistence, or draft creation. Verification records must say exactly which of those levels was observed.
+
+## Observability without clinical leakage
+
+Operational signals include deployment status, liveness, aggregate event claims and deliveries, retry and dead-letter counts, worker completion categories, provider-failure categories, and correlation-safe identifiers. They do not include prescription images, raw OCR text, medication values, object contents, signed download links, database URLs, or secret material.
+
+Logs are diagnostic inputs, not a second clinical database. Product views must read persisted Core state through authorization-aware endpoints rather than reconstructing a patient record from operational traces.
+
+## Failure and recovery runbook principles
+
+A transient provider failure should result in a Core-recorded retryable outcome and a delayed identifier-only request event. A handler-delivery failure follows dispatcher retry policy. A worker interruption before result submission is repaired by expired-lease recovery. Attempts are bounded; exhaustion is a safe terminal state, not an excuse for infinite automatic work.
+
+When an external provider is unavailable, do not manually create a duplicate upload, synthetic clinical record, or regimen merely to demonstrate success. Record the blocker, preserve the existing evidence state, and resume only under an authorized verification decision.
+
+## Secret and environment hygiene
+
+Secrets remain sealed configuration values and are scoped to the smallest responsible service. Logs, Storybook, commit history, screenshots, and handover documents must never reproduce them. Any credentials previously exposed outside the sealed configuration boundary must be treated as compromised and rotated through a controlled handover.
+
+## Source of truth
+
+The deployment responsibilities are represented by the API, dispatcher, migrator, and worker projects in [Nirog Core](https://github.com/Paradox-Tech-BD/nirog-core). Environment-specific values and service addresses are intentionally excluded from documentation.

@@ -1,0 +1,54 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const coreLayers = `flowchart TB
+  Route[Fastify route and TypeBox contract] --> App[Application command or query]
+  App --> Auth[Identity, profile authorization, idempotency]
+  Auth --> Port[Domain port]
+  Port --> Infra[Drizzle repository or storage adapter]
+  Infra --> Tx[PostgreSQL transaction and RLS]
+  Tx --> Audit[Safe audit record]
+  Tx --> Outbox[Transactional outbox event]
+  Route --> Problem[Consistent success or problem envelope]`;
+
+<Meta title="Nirog / 10 Subsystem Reference / 03 Core Clinical Authority" />
+
+# Core Clinical Authority
+
+Nirog Core is the **only clinical system of record**. It is a TypeScript modular monolith that separates transport, application orchestration, domain ports, and infrastructure adapters. The separation is practical: it prevents HTTP routes, worker adapters, or storage code from quietly owning clinical policy.
+
+<MermaidDiagram title="Core request and transaction ownership" chart={coreLayers} />
+
+## Feature ownership
+
+Core is organized around the user, medication, evidence, integrations, and platform-administration features. Shared packages provide access control, authentication helpers, validated configuration, contracts, database schema and migrations, evidence domain contracts, evidence storage, medication domain contracts, and user domain contracts.
+
+Each feature owns its application commands and queries, presentation contracts, authorization calls, and persistence ports. Infrastructure fulfills the ports rather than forcing feature policy into database or HTTP code.
+
+## Request lifecycle
+
+A Core route accepts a TypeBox-defined request, creates a request scope, validates the caller, and invokes an application command or query. The application layer checks profile-scoped permission and idempotency where applicable, then executes the mutation through a repository-backed transaction. The route returns a consistent success envelope or a problem envelope without leaking implementation details.
+
+Core is authoritative even when the Web companion initiated the action or the ML worker supplied a result. A valid UI click cannot bypass Core’s authorization. A worker callback cannot bypass an active lease. A migration does not become safe merely because application code exists; migration order remains part of the release contract.
+
+## Identity and access
+
+Core accepts Clerk-backed identity at its public boundary and resolves profile-scoped access from its own authorization model. Platform roles have zero patient-data access by default. Patient and caregiver access is evaluated against the target profile and required permission, not merely the fact that a person is signed in.
+
+The authorization design maintains room for policy-based rules without weakening the current role and grant model. The request purpose, resource scope, and explicit permission are part of application-layer decisions rather than scattered route conditionals.
+
+## Data and transaction integrity
+
+PostgreSQL is protected with row-level security and application-level scope enforcement. Drizzle migrations define forward database changes. Clinical writes use transactions so the domain update, safe audit record, and identifier-only outbox event either commit together or do not commit at all.
+
+Idempotency keys protect repeatable mutation commands, including evidence completion, draft edits, and regimen creation. They are particularly important across browser retries, server-side relays, worker result callbacks, and queue redelivery.
+
+## API documentation and response safety
+
+Core maintains generated OpenAPI material for its HTTP contracts and provides Scalar documentation for API exploration. API consumers should rely on contract schemas, standardized success envelopes, and problem responses—not on database shape or incidental log output.
+
+Clinical details, secrets, raw OCR text, presigned links, and unbounded provider responses are excluded from routine safe error and audit surfaces. Correlation identifiers support diagnosis without turning the user-facing API into a log viewer.
+
+## Source of truth
+
+The Core workspace is maintained in [Nirog Core](https://github.com/Paradox-Tech-BD/nirog-core). The application structure, shared package boundaries, Drizzle migrations, contracts, and tests are the implementation sources for this page.

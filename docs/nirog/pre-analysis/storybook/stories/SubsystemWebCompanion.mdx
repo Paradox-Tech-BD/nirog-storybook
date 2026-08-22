@@ -1,0 +1,65 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const webBoundary = `sequenceDiagram
+  participant Person as Signed-in person
+  participant Browser as Browser UI
+  participant Web as Web server bridge
+  participant Clerk as Clerk session
+  participant Core as Nirog Core
+  Person->>Browser: Select action
+  Browser->>Web: Same-origin request
+  Web->>Clerk: Verify authenticated session
+  Clerk-->>Web: Short-lived session token
+  Web->>Core: Allowlisted API path plus token
+  Core-->>Web: Typed success or problem response
+  Web-->>Browser: Same status and safe response body
+  Browser-->>Person: Render status, correction, or next action`;
+
+<Meta title="Nirog / 10 Subsystem Reference / 02 Web Companion" />
+
+# Web Companion
+
+The Web companion is a **Next.js patient and caregiver experience**, not a second clinical backend. It renders user-facing workflows and mediates browser requests through a server-side Core bridge. This avoids granting the browser unrestricted Core access while preserving a responsive, session-aware user experience.
+
+<MermaidDiagram title="Web companion to Core authorization boundary" chart={webBoundary} />
+
+## Server-side Core bridge
+
+The browser calls same-origin Web routes. The Web server validates the Clerk session, obtains a session token only for the active request, forwards only allowed headers, and proxies only allowlisted Core paths. It preserves Core’s typed success response or problem response and propagates a correlation identifier when Core supplies one.
+
+This boundary is intentional. The browser is not asked to construct arbitrary Core calls, and the Web server does not become a permissive relay. An unauthenticated session receives an authentication problem response; an unconfigured Core target receives a configuration problem response; a missing token receives a token-unavailable response; and a network failure becomes a bounded Core-unreachable response.
+
+## Evidence workspace responsibility
+
+The prescription-evidence workspace lets a signed-in user select a profile and prescription, choose an allowed file, authorize a time-limited upload, upload the bytes, and complete the evidence record. Only after the completion command does Core queue automatic OCR work.
+
+The interface distinguishes the user-visible stages of **authorization**, **transfer**, **queueing**, and **completion**. Client-side validation checks the permitted file type and size before initiating the workflow. A failed upload does not silently create a completed evidence record, and a failed UI attempt is not described as a clinical change.
+
+## Asynchronous status experience
+
+When evidence is processing, the workspace refreshes Core-authoritative status on a five-second cadence. It reads profile metadata, prescriptions, evidence metadata, extraction metadata, and medication drafts through the server bridge. The UI does not infer a successful extraction from a spinner, upload acknowledgement, or worker request. It waits for persisted Core state.
+
+The user can refresh manually, receive safe error messages, and see that a draft is pending rather than being asked to make decisions before a candidate exists. This prevents the browser from becoming an untracked source of workflow truth.
+
+## Confidence and correction experience
+
+The UI presents the field-confidence threshold as **0.70**. A candidate with an eligible confidence can pre-populate a field, while a missing or lower-confidence field is visibly marked for correction. Medication name, dose, route, frequency, schedule times, and interval remain editable inputs.
+
+This is assistance, not automation of treatment. The Web companion never treats a confidence score as consent, clinical validation, or authority to activate a regimen.
+
+## Explicit regimen boundary
+
+The visible “Save medication regimen” action is deliberately separate from OCR. The user confirms or corrects the editable draft first. The Web companion then sends the ordered explicit commands to update the draft, create the regimen, and mark the draft submitted. Core re-evaluates authorization and validation for every command.
+
+> Uploading evidence, completing OCR, or seeing a high-confidence field must never create a regimen by itself.
+
+Patients and authorized caregivers can submit only when Core grants the applicable write permission. Caregivers with inspection access may see provenance and draft state, but they do not routinely block automatic extraction.
+
+## Error-handling expectations
+
+The Web companion uses problem responses for authentication, configuration, token, and Core-reachability failures. It uses per-action UI state for upload and draft-submission failures, and it reports that a failed submission did not create a regimen. UI errors are not a substitute for server-side authorization or idempotency.
+
+## Source of truth
+
+The implemented boundary is in the [Web Core proxy](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/lib/core-proxy.ts), [evidence workspace](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/components/prescription-evidence-workspace.tsx), and the Web route-policy tests. Never document session tokens, server variables, private API origins, or user-specific evidence.

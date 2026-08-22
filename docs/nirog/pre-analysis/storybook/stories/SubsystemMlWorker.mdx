@@ -1,0 +1,60 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const workerFlow = `sequenceDiagram
+  participant Dispatcher
+  participant Worker as Isolated ML worker
+  participant Core
+  participant Storage as Private evidence storage
+  participant Provider as Gemini provider
+  Dispatcher->>Worker: Authenticated identifier-only event
+  Worker->>Core: Request job lease
+  Core-->>Worker: Active lease or no-op
+  Worker->>Core: Request evidence access for lease
+  Core-->>Worker: Short-lived bounded read capability
+  Worker->>Storage: Read evidence through capability
+  Worker->>Provider: Bounded extraction request
+  Worker->>Core: Success, retryable failure, or permanent failure result
+  Core-->>Worker: Accepted result or harmless stale no-op`;
+
+<Meta title="Nirog / 10 Subsystem Reference / 06 Isolated ML Worker" />
+
+# Isolated ML Worker
+
+The ML worker is a **separately deployed Python/FastAPI service** that performs OCR and structured medication-candidate extraction. It is deliberately isolated from clinical storage and public identity systems. The worker is an evidence processor, not a clinical authority.
+
+<MermaidDiagram title="Minimum-authority ML worker interaction" chart={workerFlow} />
+
+## Minimum-authority design
+
+The worker accepts a single authenticated internal event shape: the OCR event type, correlation reference, profile reference, evidence reference, and job reference. It does not receive a database connection, a broad object-store credential, Clerk credentials, or permission to create a regimen.
+
+Its dedicated Core client can do only three categories of work: request a job lease, request evidence access for that active lease, and submit the result for that lease. Each Core call uses the worker-only service identity. A missing or stale job resolves to a harmless no-op rather than a blind retry or cross-profile lookup.
+
+## Lease-bound evidence access
+
+Core authorizes evidence reads only after a worker holds a valid lease. The worker receives a short-lived evidence capability, streams the object, and enforces a configured maximum download size. Missing evidence and oversized evidence are permanent-access failures; object-store server failures and network errors are retryable-access failures.
+
+The worker must not retain the evidence beyond the extraction operation. It must not write the object to an alternate store, include it in logs, or attach it to an outbox event.
+
+## Extraction contract
+
+The worker uses a local OCR/normalization pipeline and an external Gemini extraction provider to produce bounded structured candidates. Provider output is requested in JSON mode and is validated locally before Core receives it. The worker supplies only bounded result fields, source metadata, pipeline metadata, candidate values, and confidence fields permitted by the Core contract.
+
+The configured provider model is runtime configuration rather than an architectural trust boundary. Product behavior must depend on the persisted candidate contract and confidence policy, not on a provider-specific free-text format.
+
+## Deadline and failure classification
+
+Provider requests have a bounded timeout. A temporary provider, network, or evidence-access condition is reported to Core as a retryable OCR failure. A permanently unsafe or invalid extraction condition is reported as a permanent OCR failure. Core owns the resulting state transition, delay schedule, attempt budget, audit record, and outbox emission.
+
+This division avoids stranded work. A bounded timeout becomes an explicit result callback instead of an indefinitely leased job. If a process ends before it can report a callback, the dispatcher’s expired-lease recovery sweep can safely schedule a new attempt or finish at the configured terminal boundary.
+
+## What success does and does not mean
+
+Worker success means Core has received a valid extraction result for an active lease. It does not mean a regimen exists. Core may persist extraction provenance and editable medication drafts; only a later explicit, authorized regimen command creates clinical regimen state.
+
+Recent production verification confirmed the lease, evidence-read, result-callback, retry, and recovery boundaries. It did not produce a successful real-provider extraction because the provider returned availability failures. Documentation must never represent that provider-limited attempt as a completed clinical draft.
+
+## Source of truth
+
+The worker implementation, settings validation, Core client, extractor, Dockerfile, and test suite are in [Nirog Core’s ML worker directory](https://github.com/Paradox-Tech-BD/nirog-core/tree/main/workers/ml). This page intentionally omits model keys, worker identities, private origins, signed evidence capabilities, and any OCR content.

@@ -1,0 +1,69 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const topology = `flowchart LR
+  User[Patient or authorized caregiver] --> Web[Nirog Web companion]
+  Web --> Clerk[Clerk session boundary]
+  Web --> Core[Nirog Core API]
+  Core --> Clinical[(Clinical PostgreSQL with RLS)]
+  Core --> R2[Private evidence storage]
+  Core --> Outbox[Transactional outbox]
+  Outbox --> Dispatcher[Outbox dispatcher]
+  Dispatcher --> Worker[Isolated ML worker]
+  Worker --> Core
+  Core --> Drafts[Editable medication drafts]
+  Drafts --> User
+  User --> Regimen[Explicit regimen submission]
+  Regimen --> Clinical`;
+
+<Meta title="Nirog / 10 Subsystem Reference / 01 Subsystem Atlas" />
+
+# Subsystem Atlas
+
+Nirog is a **clinical workflow platform**, not a single undifferentiated application. Its subsystems have deliberately different authority levels. The Web companion guides a signed-in person through a safe experience; Nirog Core is the only clinical system of record; the dispatcher moves committed work; and the ML worker performs bounded extraction without becoming a clinical writer.
+
+<MermaidDiagram title="Nirog subsystem responsibility map" chart={topology} />
+
+## The authority rule
+
+> A subsystem may only perform the work for which it has both a technical capability and a product authority. Convenience must never grant clinical authority.
+
+The Web companion may collect a file selection, render status, and submit a user-confirmed command. It cannot directly write clinical storage. The dispatcher may deliver committed references but does not interpret medication data. The ML worker may extract candidate fields but cannot activate a regimen, write a database, or read a patient record outside a valid lease. Core verifies identity, permissions, idempotency, ownership, and state transitions before committing any clinical change.
+
+## Subsystems at a glance
+
+### Web companion
+
+The Web companion is the patient- and caregiver-facing Next.js application. It holds the user experience for profile selection, evidence upload, processing feedback, candidate review, and the explicit medication-regimen action. Its server-side bridge is the browser-to-Core boundary.
+
+### Nirog Core
+
+Core is the TypeScript modular monolith and clinical authority. It exposes typed HTTP contracts, validates requests, resolves Clerk identity, enforces profile-scoped access, applies idempotency, writes transactions, persists audit records, and emits transactional outbox events.
+
+### Evidence and medication drafts
+
+Evidence storage and OCR jobs form a bounded asynchronous workflow. A completed extraction produces confidence-scored, editable medication drafts. A draft is not a regimen. A patient or an authorized caregiver must explicitly submit a valid regimen command.
+
+### Dispatcher
+
+The dispatcher claims committed outbox events, invokes registered handlers, schedules retries, dead-letters exhausted delivery failures, and recovers stale OCR leases before claiming normal work. It is a delivery subsystem, not a clinical decision maker.
+
+### ML worker
+
+The ML worker is an isolated Python/FastAPI service. It accepts only authenticated identifier-only OCR events, obtains a short-lived Core lease, retrieves authorized evidence through Core, extracts bounded candidates, and reports a success or classified failure back to Core.
+
+### Operations plane
+
+The operations plane coordinates migrations, service deployment order, health checks, observability, retry diagnosis, retention, and secret rotation. Operational records describe status and safe metadata only; they must never contain prescription content, extracted medication values, signed links, or credentials.
+
+## Cross-subsystem invariants
+
+The following rules apply across every interface. A browser action is never proof of a clinical commit; Core’s transaction is. An event is not durable until written with the originating transaction. A worker result is not trusted until it matches an active lease. A confidence score can assist editing but cannot create a regimen. A caregiver may inspect authorized workflow state but does not form a routine extraction gate.
+
+## Reading order
+
+Continue with the subsystem pages in this group for implementation-level responsibility, data-flow, failure behavior, operations, and documentation-maintenance rules. The existing System Architecture and Implementation Inception groups remain the broader cross-cutting references; this group is the operationally grounded subsystem reference.
+
+## Source of truth
+
+The implementation boundaries are maintained in [Nirog Core](https://github.com/Paradox-Tech-BD/nirog-core) and [Nirog Web](https://github.com/Paradox-Tech-BD/nirog-web). This page intentionally describes architecture and authority, not deployment secrets or patient data.

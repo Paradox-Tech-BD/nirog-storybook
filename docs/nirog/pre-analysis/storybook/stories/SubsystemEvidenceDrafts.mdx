@@ -1,0 +1,69 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const lifecycle = `stateDiagram-v2
+  [*] --> upload_authorized
+  upload_authorized --> uploaded: object transfer succeeds
+  uploaded --> processing: completion queues OCR job
+  processing --> processed: successful extraction persists
+  processing --> rejected: permanent or exhausted failure
+  processed --> draft_ready: candidate persisted
+  draft_ready --> needs_correction: missing or low confidence field
+  draft_ready --> submitted: explicit authorized regimen action
+  needs_correction --> submitted: correction plus explicit action`;
+
+export const draftBoundary = `sequenceDiagram
+  participant UI as Web companion
+  participant Core as Core
+  participant Worker as ML worker
+  UI->>Core: Complete uploaded evidence
+  Core->>Core: Commit evidence, OCR job, audit, outbox
+  Worker->>Core: Return confidence-scored candidates
+  Core->>Core: Persist extraction and editable drafts
+  Core-->>UI: Read draft metadata and fields
+  UI->>Core: Explicit authorized regimen command
+  Core->>Core: Validate and create regimen`;
+
+<Meta title="Nirog / 10 Subsystem Reference / 04 Evidence and Medication Drafts" />
+
+# Evidence and Medication Drafts
+
+The evidence subsystem converts a user-supplied prescription file into a **bounded, traceable, editable medication-draft workflow**. It is designed to automate extraction while preserving a clear clinical-commit boundary.
+
+<MermaidDiagram title="Evidence and draft state progression" chart={lifecycle} />
+
+## Secure evidence intake
+
+The user asks Core to authorize a supported, size-bounded upload for a selected prescription. Core creates the evidence metadata and returns a short-lived upload capability. The browser transfers the object directly to private evidence storage. The evidence remains incomplete until the authenticated completion command succeeds.
+
+Completion is the transactional enqueue point. Core moves evidence into processing and commits the OCR job, audit information, and identifier-only outbox event together. The outbox payload contains references required for delivery, not raw evidence, OCR text, or medication data.
+
+## Extraction provenance
+
+An OCR result has a source classification and may include model and pipeline metadata. This allows product surfaces and authorized caregivers to distinguish the provenance of a persisted extraction without exposing raw provider exchanges. An extraction is an evidence-derived artifact; it is not a medication regimen.
+
+The workflow records success, retryable failure, permanent failure, and terminal states through Core. Retryable processing conditions can schedule future work. Permanent or exhausted conditions leave evidence in a safe non-success outcome rather than claiming a draft exists.
+
+## Medication draft contract
+
+Each extracted medication candidate can produce a profile-scoped draft. The draft carries editable fields such as medication name, dose, route, frequency, schedule, and interval, along with field-level confidence. Candidate count, extraction provenance, and draft status support an understandable review surface without requiring a human gate before extraction.
+
+The product threshold is **0.70**. At or above the threshold, a qualifying field can auto-populate. Below the threshold—or when missing—the field remains visibly editable and should be marked for correction. The threshold is a UI assistance rule, not a substitute for clinical validation or consent.
+
+<MermaidDiagram title="Automatic extraction and explicit clinical submission boundary" chart={draftBoundary} />
+
+## Submission is always explicit
+
+The automatic path ends after extraction and draft persistence. A patient or authorized caregiver must explicitly submit a validated regimen command. Core confirms current permission, validates all required regimen fields, creates the regimen, and records the draft’s submitted linkage transactionally.
+
+> No worker, dispatcher, upload completion endpoint, or confidence threshold may create a regimen.
+
+Caregivers can inspect authorized evidence provenance, draft state, confidence, corrections, and audit metadata. Their visibility does not make extraction contingent on a routine caregiver approval gate. Default caregiver access does not include regimen-write authority.
+
+## Safety and retention expectations
+
+Evidence access is lease-bound and time-limited. Raw OCR text and provider payloads are not suitable for outbox, audit, or user-facing operational logs. Retention, deletion, and export behavior must follow the evidence record and profile policy rather than convenience copies made by downstream subsystems.
+
+## Source of truth
+
+The implemented evidence feature, domain contract, migrations, Web workspace, and medication commands in [Nirog Core](https://github.com/Paradox-Tech-BD/nirog-core) and [Nirog Web](https://github.com/Paradox-Tech-BD/nirog-web) are the source of truth for this lifecycle.

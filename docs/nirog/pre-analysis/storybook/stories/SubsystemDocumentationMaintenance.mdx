@@ -1,0 +1,48 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const docsFlow = `flowchart LR
+  Change[Feature, schema, workflow, or runtime change] --> Classify[Classify implementation and risk]
+  Classify --> Update[Update affected subsystem story]
+  Update --> Verify[Build Storybook and validate links/diagrams]
+  Verify --> Record[State implementation, deployment, and verification status]
+  Record --> Sync[Commit and synchronize main and next]
+  Sync --> Change`;
+
+<Meta title="Nirog / 10 Subsystem Reference / 08 Documentation Maintenance Contract" />
+
+# Documentation Maintenance Contract
+
+This Storybook is a living product-and-engineering reference. It must evolve with Nirog rather than becoming a one-time Core design archive. Every implementation increment should leave an understandable record of the subsystem that changed, the interface it owns, the data it may handle, the failure behavior, and the verification level reached.
+
+<MermaidDiagram title="Documentation-as-code update loop" chart={docsFlow} />
+
+## Required documentation triggers
+
+Update the affected subsystem documentation whenever a change modifies an API contract, validation rule, permission, database schema or migration, evidence lifecycle, worker event shape, retry policy, provider boundary, deployment topology, observability signal, retention rule, or user-visible workflow.
+
+Add a new subsystem page when a responsibility cannot be explained by updating the existing Web, Core, evidence-and-drafts, dispatcher, ML worker, or operations pages without mixing unrelated authority boundaries.
+
+## What each update must state
+
+Every retrospective or future update must answer five questions in plain language. It must name the owner of the behavior, the caller or trigger, the data boundary, the failure and retry behavior, and the verification level. It should link to the relevant implementation source and related Storybook page.
+
+The verification level must be explicit. Use **designed** for an approved intended contract, **implemented** for committed and tested code, **deployed** for an active runtime release, and **verified** only for the exact behavior observed through a safe test or production observation. Do not use a deployment result to imply a clinical workflow result.
+
+## Documentation quality checklist
+
+Before publishing, ensure that the page identifies the trust boundary and avoids invisible authority transfer. Confirm that no routine human review gate was accidentally introduced into automatic extraction. Confirm that automatic draft creation and explicit regimen submission are still described as different actions. Confirm that error and retry paths are documented alongside the happy path.
+
+The page must also avoid sensitive material. Never include credentials, private service names or addresses, database URLs, signed evidence URLs, patient identifiers, prescription images, raw OCR text, medication values from a real patient, or unredacted operational logs.
+
+## Source and branch discipline
+
+Storybook source is maintained as MDX in the documentation repository and built through the native Storybook configuration. Each documentation change is built locally before publication. Changes are committed with the relevant implementation increment when practical, or explicitly cross-referenced when repositories must release independently.
+
+Canonical documentation must be synchronized to both `main` and `next` through normal commits and merges. Do not force push. Resolve divergence deliberately, preserve existing authored documentation, and record the destination commit in the task register only after a successful build and push.
+
+## Ownership and future practice
+
+The implementation owner of a subsystem is responsible for proposing the update; the documentation reviewer verifies the authority, lifecycle, safety, and status claims. Operational incidents and verification findings update the operations and relevant subsystem pages when they change supported behavior or reveal a permanent design decision.
+
+This page establishes the requested retrospective-and-future practice: Web, Core, evidence, asynchronous delivery, ML, and operations are first-class documentation areas, and future work must update the relevant area before it is called complete.

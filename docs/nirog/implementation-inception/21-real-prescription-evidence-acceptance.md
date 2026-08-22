@@ -35,6 +35,8 @@ sequenceDiagram
 
 The authenticated same-origin Core bridge was checked using status/count-only reads, not raw OCR text. It confirmed one available profile, one active prescription container, one `processed` evidence record, and one `pending_review` extraction. This proves the real image completed the secure upload, durable evidence registration, asynchronous dispatch, isolated OCR, Core receipt, and human-review persistence path.
 
+The deployed browser then rendered the same profile, prescription, processed-evidence, and pending-review state once its sequential Core reads completed. This visual check confirmed that the first loading screen was waiting for profile, prescription, evidence, and extraction reads—not a lost record, failed worker, or duplicate-upload condition.
+
 The final status is deliberately a review state. `pending_review` does not create a medication, regimen, dose log, reminder, inventory movement, refill event, diagnosis, or patient-facing notification. Any future clinical action requires a separate, explicitly authorized workflow and cannot be inferred from this extraction.
 
 ## Web companion completion
@@ -42,6 +44,8 @@ The final status is deliberately a review state. `pending_review` does not creat
 The acceptance exercise exposed two genuine usability boundaries. First, an authenticated account with no profile could not enter the evidence workflow because the companion had no profile-create control. Web commit [`c359a1f`](https://github.com/Paradox-Tech-BD/nirog-web/commit/c359a1f) adds a Core-authoritative profile-onboarding form through the narrow server-side proxy allowlist.
 
 Second, evidence processing could complete asynchronously after a page load. Web commit [`54cb347`](https://github.com/Paradox-Tech-BD/nirog-web/commit/54cb347) adds an explicit **Refresh status** action and cancellable five-second processing-state polling. The client continues to render Core-authoritative status; it does not fabricate a result or re-upload the file.
+
+Web commit [`27cc7ed`](https://github.com/Paradox-Tech-BD/nirog-web/commit/27cc7ed) simplifies the initial evidence loading effect so a fresh authenticated page follows the complete read sequence reliably. It does not change evidence, OCR, or clinical authority semantics.
 
 Both web changes passed linting, the companion unit suite, and a clean-environment Next.js production build. The live acceptance record contains no prescription text, OCR candidate fields, signed URL, token, credential, or private object key.
 

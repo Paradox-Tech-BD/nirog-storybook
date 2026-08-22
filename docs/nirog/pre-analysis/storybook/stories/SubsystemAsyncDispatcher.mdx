@@ -1,0 +1,53 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const outboxFlow = `flowchart TD
+  Commit[Core transaction commits domain change] --> Event[Identifier-only outbox event]
+  Event --> Sweep[Recover expired OCR leases first]
+  Sweep --> Claim[Claim due supported events with lease]
+  Claim --> Deliver[Invoke registered handler]
+  Deliver -->|success| Published[Mark event published]
+  Deliver -->|transient failure| Delayed[Schedule delayed retry]
+  Deliver -->|attempt budget exhausted| DLQ[Dead-letter event]
+  Sweep -->|retriable stale lease| Requeued[Clear stale lease and emit one retry event]
+  Sweep -->|attempt limit exhausted| SafeTerminal[Record safe terminal outcome]`;
+
+<Meta title="Nirog / 10 Subsystem Reference / 05 Asynchronous Dispatcher and Recovery" />
+
+# Asynchronous Dispatcher and Recovery
+
+The dispatcher is the durable-work delivery subsystem. It moves events that have already committed with their Core transaction. It does not create clinical intent, parse a prescription, or make a treatment decision.
+
+<MermaidDiagram title="Transactional outbox delivery and stale-lease recovery" chart={outboxFlow} />
+
+## Transactional outbox model
+
+When a Core command changes a domain record and needs asynchronous follow-up, it writes an identifier-only outbox event in the same database transaction. This eliminates the gap where a clinical update commits but a separate queue publish fails, or a queue publish succeeds for a transaction that later rolls back.
+
+The dispatcher claims only due events for registered handlers. It leases claims, invokes the handler, and marks an event published only after successful delivery. A handler failure is classified into a bounded retry schedule or a dead-letter outcome. Observability exposes aggregate claim, delivery, retry, and terminal counters rather than event payloads.
+
+## OCR event boundary
+
+For OCR, the dispatcher sends only the profile, evidence, job, event type, and correlation references required by the worker contract. It authenticates delivery with its dedicated service identity. It never forwards database credentials, object-store credentials, raw evidence bytes, or medication fields.
+
+The worker independently asks Core for a valid lease. Delivery is therefore at-least-once compatible: a redelivered event cannot create a second active clinical result merely because a network response was ambiguous.
+
+## Expired OCR lease recovery
+
+An active lease can be stranded if a worker restart, provider stall, or process interruption occurs before Core receives the result callback. The dispatcher now performs an expired-OCR-lease sweep **before** normal outbox claiming. The recovery operation uses a bounded batch, concurrency-safe database locking, and a transactional update.
+
+For an expired lease with remaining attempt budget, it clears the stale lease state, returns the job to a retriable scheduling state, writes safe audit metadata, and emits exactly one identifier-only OCR request event in the same transaction. For a job at its attempt limit, it follows the safe terminal branch instead of retrying forever. The sweep is idempotent under overlapping dispatcher cycles.
+
+## Retry responsibility split
+
+Delivery retries and OCR-processing retries are not identical. The dispatcher retries a handler that could not deliver an event. Core schedules a new OCR request when an authenticated worker reports a retryable processing outcome. The expired-lease sweep repairs the special case where the worker never had an opportunity to report an outcome.
+
+This separation preserves a useful diagnosis: delivery health, Core state-transition health, object-access health, and provider availability can be observed independently.
+
+## Failure-handling requirements
+
+Every retry has a delay and an attempt budget. Every mutable event transition is conditional on its current lease or state. Error logs retain only bounded error categories or correlation-safe metadata. Dead-lettered work remains diagnosable through authorization-aware operations, not by dumping clinical payloads into logs.
+
+## Source of truth
+
+See the [dispatcher application](https://github.com/Paradox-Tech-BD/nirog-core/tree/main/apps/dispatcher), outbox persistence adapter, and Core OCR result command. Production verification has confirmed stale-lease recovery and retry callbacks; it has not confirmed a successful real-provider extraction when the provider is unavailable.

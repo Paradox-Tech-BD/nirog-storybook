@@ -31,6 +31,14 @@
 
 ## Complete end-to-end acceptance recovery
 
+## Realtime notification architecture decision
+
+- [x] Inspect the deployed durable in-app inbox, dispatcher event path, Core/Web transport boundaries, RLS model, and database connection behavior before selecting a realtime approach.
+- [x] Research current Supabase Realtime, Clerk third-party auth, RLS, Broadcast/Postgres-Changes scaling, PostgreSQL migration, pooler, and Railway persistent-connection documentation.
+- [x] Decide not to migrate the primary Neon PostgreSQL database to Supabase solely for realtime notifications; document the compatibility assessment and recommended Core-owned notification stream.
+
+> **Realtime decision record — 24 August 2026:** Nirog has durable user-visible in-app reminder records but no current WebSocket, SSE, Supabase client, or direct browser database access. Supabase Realtime is technically compatible with Clerk third-party JWT integration, but it would not reproduce Nirog’s profile/delegated-care authorization automatically. A primary database move would also require deliberate recreation and testing of custom roles, grants, RLS, custom schemas, transaction-scoped request context, the API/dispatcher/migrator connection model, and cutover controls. The proportionate next increment is a Core-owned, Clerk-authenticated SSE notification-hint stream that prompts the companion to re-read the durable Core inbox. No Supabase credential was used, stored, or committed because the database migration was not selected. The full source-backed decision is published as the Storybook “Realtime Notification Decision” page.
+
 - [x] Run a separate normal owner upload and automatic-extraction check for each of the three newly authorized prescription-image files, recording aggregate evidence, extraction, editable-draft, and terminal-status results only.
 - [x] Use a test-environment regimen created from an authorized draft to exercise reminder schedule materialization, due dispatch, acknowledgement, adherence projection, inventory initialization, refill movement, refill-alert transition, and user-visible notification behavior.
 - [x] Verify authenticated account projection, profile selection, owner/delegated access context, and the Core proxy method matrix in the deployed Web companion.

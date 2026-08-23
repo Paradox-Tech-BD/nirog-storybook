@@ -26,7 +26,7 @@ The Web companion is a **Next.js patient and caregiver experience**, not a secon
 
 ## Server-side Core bridge
 
-The browser calls same-origin Web routes. The Web server validates the Clerk session, obtains a session token only for the active request, forwards only allowed headers, and proxies only allowlisted Core paths. It preserves Core’s typed success response or problem response and propagates a correlation identifier when Core supplies one.
+The browser calls same-origin Web routes. The Web server validates the Clerk session, obtains a session token only for the active request, forwards only allowed headers, and proxies only allowlisted Core paths. It preserves the incoming query string as well as Core’s typed success response or problem response, and propagates a correlation identifier when Core supplies one. The deployed bridge supports the bounded `GET`, `POST`, `PATCH`, `PUT`, and `DELETE` method set required by the implemented care flows; it is not a general-purpose relay.
 
 This boundary is intentional. The browser is not asked to construct arbitrary Core calls, and the Web server does not become a permissive relay. An unauthenticated session receives an authentication problem response; an unconfigured Core target receives a configuration problem response; a missing token receives a token-unavailable response; and a network failure becomes a bounded Core-unreachable response.
 
@@ -90,6 +90,16 @@ The visible “Save medication regimen” action is deliberately separate from O
 
 Patients and authorized caregivers can submit only when Core grants the applicable write permission. Caregivers with inspection access may see provenance and draft state, but they do not routinely block automatic extraction. The browser must use the same Core permission snapshot to withhold mutation controls, while Core remains the authoritative enforcement point for every command.
 
+## Care-plan execution and in-app delivery
+
+The `/care-plan` route presents the next explicit layer after a regimen exists. It reads the regimen schedule, reminder policies, bounded occurrence window, adherence projection, inventory, inventory ledger, refill alerts, and notification inbox only through the same authorization bridge. Its reminder and inventory actions carry Core-required idempotency keys, and every successful command refreshes the read model rather than mutating a local clinical copy.
+
+The deployed owner acceptance on 23 August 2026 completed a user-authorized test lifecycle. In aggregate, the final state contained one reminder policy; two materialized occurrences in the observed window, one acknowledged and one scheduled; one durable in-app reminder record; one daily adherence metric with an available streak; two inventory ledger movements; and one refill alert acknowledged before an explicit refill was recorded. The acceptance did not expose medication values, prescription text, record identifiers, or evidence data.
+
+The care-plan interface now exposes an open refill-alert acknowledgement control only when Core returns an authorized open alert. This closes the earlier observability gap: the UI can read the alert, acknowledge it through the profile- and regimen-scoped command, and refresh the resulting status. It does not infer alert state from a stock display or attempt to derive an identifier in the browser.
+
+> **Delivery boundary:** a delivered reminder currently produces a durable, user-visible **in-app** inbox record. The current environment has no configured push, SMS, or email adapter, provider receipt, or external-delivery UI. A notification count must therefore never be described as a phone message, push notification, or email.
+
 ## Error-handling expectations
 
 The Web companion uses problem responses for authentication, configuration, token, and Core-reachability failures. It uses per-action UI state for upload and draft-submission failures, and it reports that a failed submission did not create a regimen. UI errors are not a substitute for server-side authorization or idempotency.
@@ -100,4 +110,4 @@ The Web companion also treats an unavailable manager-only grant roster as a boun
 
 ## Source of truth
 
-The implemented boundary is in the [Web Core proxy](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/lib/core-proxy.ts), [stable read model](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/lib/core-read-model.ts), [evidence workspace](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/components/prescription-evidence-workspace.tsx), [care-circle workspace](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/components/care-circle-workspace.tsx), and the Web route-policy tests. Never document session tokens, server variables, private API origins, or user-specific evidence.
+The implemented boundary is in the [Web Core proxy](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/lib/core-proxy.ts), [stable read model](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/lib/core-read-model.ts), [evidence workspace](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/components/prescription-evidence-workspace.tsx), [care-plan workspace](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/components/care-plan-workspace.tsx), [care-circle workspace](https://github.com/Paradox-Tech-BD/nirog-web/blob/main/src/components/care-circle-workspace.tsx), and the Web route-policy tests. Never document session tokens, server variables, private API origins, or user-specific evidence.

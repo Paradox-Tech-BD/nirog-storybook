@@ -27,11 +27,20 @@
 
 ## Automated prescription ingestion and medication drafts
 
-- [ ] Replace the review-status-only OCR result with an asynchronous, provenance-preserving ML extraction contract that emits field-level medication candidates and confidence scores.
-- [ ] Persist a profile-scoped medication draft for each extracted candidate and mark fields at or above the requested 70% threshold as auto-populated; require editable correction for lower-confidence or missing fields.
-- [ ] Implement the authenticated frontend draft workflow: show asynchronous progress, populate the medication form from the draft, surface confidence and uncertainty, and submit an explicit user-approved draft to the existing medication command.
+## Authorized prescription-ingestion recovery
+
+- [x] Classify the frontend-visible rejection against Core evidence, OCR-job, outbox, and worker result states using safe aggregate diagnostics; distinguish upload validation, delivery, provider availability, parsing, and terminal-attempt causes.
+- [x] Repair the minimum bounded ingestion or retry-policy defect so a valid supported prescription does not remain stranded or prematurely terminal solely because of transient provider unavailability.
+- [x] Use the three user-supplied prescription images only through the authorized automatic upload path, one controlled run at a time, with no manual medication transcription, no clinical recommendation, and no regimen submission.
+- [ ] Verify persisted editable-draft counts and confidence-state aggregates, plus authorized caregiver visibility, then publish only the outcome categories and implementation details needed for future maintenance.
+
+- [x] Replace the review-status-only OCR result with an asynchronous, provenance-preserving ML extraction contract that emits field-level medication candidates and confidence scores.
+- [x] Persist a profile-scoped medication draft for each extracted candidate and mark fields at or above the requested 70% threshold as auto-populated; require editable correction for lower-confidence or missing fields.
+- [x] Implement the authenticated frontend draft workflow: show asynchronous progress, populate the medication form from the draft, surface confidence and uncertainty, and submit an explicit user-approved draft to the existing medication command.
 - [ ] Provide profile-authorized caregiver visibility into extraction provenance, draft state, confidence, corrections, and submission audit without making caregiver review a routine blocker.
 - [ ] Deploy and acceptance-test the full real-file upload → queued extraction → auto-populated medication draft → user correction/submission path, then publish the completed contract to Storybook `main` and `next`.
+
+> **Authorized-ingestion verification — 23 August 2026:** the original rejection was traced to a Gemini provider availability/quota response, rather than browser file validation, R2 upload, Core authorization, outbox delivery, dispatcher leasing, or the worker callback boundary. Core commit `4feb364` is active for the public API and isolated ML worker. Its quota-aware worker made a bounded primary-provider attempt, received a retryable quota response, used its configured bounded fallback, and Core accepted the result callback. One user-authorized PNG was then uploaded once through the signed-in Web workspace’s ordinary secure upload flow. Aggregate persisted state is `processed` evidence, one successful extraction, seven candidates, and seven editable drafts; all seven drafts remain `needs_correction`, and the submitted-draft count is zero. No raw OCR output, medication value, evidence URL, identifier, manual requeue, caregiver action, medication edit, or regimen creation/submission was used in this verification. The deployed fallback proved successful for this run; provider availability and quota still remain external dependencies, so future provider failures must continue through the bounded retry/defer policy rather than being concealed or fabricated. The currently signed-in production session is an owner context; delegated-caregiver runtime verification remains open despite self-access API coverage.
 
 ## Constrained production deployment handover
 

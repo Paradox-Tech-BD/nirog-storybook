@@ -39,7 +39,9 @@ The worker must not retain the evidence beyond the extraction operation. It must
 
 ## Extraction contract
 
-The worker uses a local OCR/normalization pipeline and an external Gemini extraction provider to produce bounded structured candidates. Provider output is requested in JSON mode and is validated locally before Core receives it. The worker supplies only bounded result fields, source metadata, pipeline metadata, candidate values, and confidence fields permitted by the Core contract.
+The worker uses a local OCR/normalization pipeline and an external Gemini extraction provider to produce bounded structured candidates. Provider output is requested in JSON mode and is validated locally before Core receives it. Gemini supports schema-constrained JSON responses for predictable, type-safe extraction, but the product still treats provider output as untrusted until local and Core-contract validation succeeds.[1]
+
+The provider boundary accepts supported image MIME types and uses a prompt-before-image request order. The worker never treats image support as a guarantee of clinical correctness; every result still passes the Nirog bounded candidate and confidence contract.[2]
 
 The configured provider model is runtime configuration rather than an architectural trust boundary. Product behavior must depend on the persisted candidate contract and confidence policy, not on a provider-specific free-text format.
 
@@ -53,8 +55,20 @@ This division avoids stranded work. A bounded timeout becomes an explicit result
 
 Worker success means Core has received a valid extraction result for an active lease. It does not mean a regimen exists. Core may persist extraction provenance and editable medication drafts; only a later explicit, authorized regimen command creates clinical regimen state.
 
-Recent production verification confirmed the lease, evidence-read, result-callback, retry, and recovery boundaries. It did not produce a successful real-provider extraction because the provider returned availability failures. Documentation must never represent that provider-limited attempt as a completed clinical draft.
+### Verified provider-fallback acceptance
+
+On 23 August 2026, a single user-authorized production evidence upload exercised the full isolated-worker path. The primary Gemini attempt returned a retryable provider quota response. The worker then performed its configured **bounded fallback** within the active lease; Core accepted the result callback, persisted a processed evidence state, one extraction with seven aggregate candidates, and seven editable drafts. All seven drafts remained in the correction-required state, and zero drafts were submitted.
+
+This result verifies that a provider quota response does not inherently become a terminal rejected evidence record when the bounded fallback can complete. It does **not** remove the provider dependency: when both bounded attempts remain unavailable, the worker returns only retry metadata and Core schedules the later of its policy delay or the provider hint. This bounded response follows the provider’s published guidance to retry transient `429` and `5xx` responses with backoff and a maximum retry limit.[3] The resulting delayed, identifier-only event remains owned by Core’s outbox policy. Documentation and UI must not describe a quota-limited run as successful unless persisted Core state confirms the processed extraction and draft aggregates.
+
+No medication text, field values, model response, signed evidence capability, evidence identifier, or regimen action is recorded on this page. The verification did not invoke an explicit draft-submission or regimen command.
 
 ## Source of truth
 
 The worker implementation, settings validation, Core client, extractor, Dockerfile, and test suite are in [Nirog Core’s ML worker directory](https://github.com/Paradox-Tech-BD/nirog-core/tree/main/workers/ml). This page intentionally omits model keys, worker identities, private origins, signed evidence capabilities, and any OCR content.
+
+## References
+
+[1]: https://ai.google.dev/gemini-api/docs/structured-output "Google Gemini API: Structured outputs"
+[2]: https://ai.google.dev/gemini-api/docs/image-understanding "Google Gemini API: Image understanding"
+[3]: https://ai.google.dev/gemini-api/docs/troubleshooting "Google Gemini API: Troubleshooting and retry strategy"

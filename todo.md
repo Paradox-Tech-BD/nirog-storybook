@@ -29,6 +29,7 @@
 
 ## Authorized prescription-ingestion recovery
 
+- [x] Repair the owner medication-regimen save command path that currently returns HTTP `405 Method Not Allowed` from the Web companion, then verify the correct Core method and route are used.
 - [x] Demonstrate one fully automatic owner-upload workflow that reaches persisted extraction and editable-draft aggregates after the deployed callback repair, without manually creating a medication regimen.
 - [x] Submit the newly supplied owner-authorized prescription image once through the normal upload workflow; observe only aggregate evidence, extraction, draft, and retry states, and do not transcribe, edit, submit, or create any medication regimen.
 - [x] Restore the ordinary owner upload session and verify that `document.create` enables the normal file selector and automatic extraction action, while the delegated-caregiver read-only presentation remains intentionally limited to authorized inspection.
@@ -62,6 +63,8 @@
 > **Owner care-circle wording correction — 23 August 2026:** Web commit `799ffef` now selects the owner-specific care-circle sentence from `accessKind === 'owner'`, rather than inferring delegation from a sparse self-context permission array. The delegated branch remains unchanged: a caregiver without `share.manage` still sees only the narrow relationship statement and retains no upload, clinical-edit, or regimen-submit controls. Web lint, all nine unit tests, and the standard production build passed. The browser session intermittently returned to `about:blank` during the post-push visual check, so this record distinguishes the completed code and build verification from a fresh production DOM assertion.
 
 > **Post-repair functional acceptance — 23 August 2026:** after the ML-worker callback repair was deployed successfully, the signed-in owner selected the user-authorized JPEG through the normal file picker and invoked the ordinary automatic-extraction action once. The Core-authoritative aggregate result reached `processed` evidence with one extraction and seven editable drafts. This proves the new worker deployment no longer produces the prior result-callback `400` for unread optional candidate fields. No medication field was edited, no draft was submitted, and no regimen, reminder, or other clinical record was created.
+
+> **Medication-save `405` repair — 23 August 2026:** the owner’s “Confirm and save medication regimen” action first corrects the selected medication draft with `PATCH`, but the same-origin Next proxy exported only `GET`, `POST`, and `DELETE`. Next therefore returned `405 Method Not Allowed` before the request could reach Core. Web commit `7f753cf` adds the `PATCH` route export and a focused forwarding regression test. Lint, all ten unit tests, and the production build passed. A live non-mutating empty-body `PATCH` probe reached Core and returned its expected validation `400`, explicitly proving that the proxy no longer returns `405`. No draft, regimen, or clinical field was changed by that verification; the owner remains responsible for any explicit save action.
 
 ## Constrained production deployment handover
 

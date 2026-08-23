@@ -63,6 +63,12 @@ This result verifies that a provider quota response does not inherently become a
 
 No medication text, field values, model response, signed evidence capability, evidence identifier, or regimen action is recorded on this page. The verification did not invoke an explicit draft-submission or regimen command.
 
+### Verified result-contract rejection repair
+
+Later on 23 August 2026, one newly supplied owner-authorized JPEG was submitted exactly once through the same normal Web path. Its persisted aggregate outcome was terminal rejected evidence with zero extraction and zero drafts. Redacted worker diagnostics showed a retryable Gemini `503` followed by a Core result-callback `400`. This distinguishes the incident from a browser upload failure, evidence-storage authorization failure, dispatcher non-delivery, or a claim that the provider response itself was permanent.
+
+The proven defect was at the private result boundary: the worker’s candidate serializer sent unread optional string and numeric fields as JSON `null`, whereas the Core TypeBox schema accepts those fields only when absent. Core commit `e50b4d3` now removes null-valued optional fields while retaining required schedule and interval values, and adds a synthetic payload regression test at the Core-client boundary. The complete isolated ML-worker suite passed 26 tests and the targeted Railway worker deployment reached success. The already terminal record was deliberately not manually requeued or resubmitted, so this repair is not documented as a new successful extraction. No image content, OCR output, medication field, draft edit, or regimen action was accessed or created.
+
 ## Source of truth
 
 The worker implementation, settings validation, Core client, extractor, Dockerfile, and test suite are in [Nirog Core’s ML worker directory](https://github.com/Paradox-Tech-BD/nirog-core/tree/main/workers/ml). This page intentionally omits model keys, worker identities, private origins, signed evidence capabilities, and any OCR content.

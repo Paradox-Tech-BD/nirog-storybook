@@ -1,0 +1,95 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { MermaidDiagram } from '../components/MermaidDiagram';
+
+export const recommendedFlow = `sequenceDiagram
+  participant Dispatcher as Nirog dispatcher
+  participant Inbox as Durable in-app inbox
+  participant Relay as Internal event relay
+  participant Core as Clerk-authenticated Core stream
+  participant Web as Signed-in Web companion
+  Dispatcher->>Inbox: Insert minimal reminder notification
+  Inbox-->>Dispatcher: Durable record committed
+  Dispatcher->>Relay: Publish refresh hint after commit
+  Relay->>Core: Fan out profile-scoped hint
+  Core->>Web: Authorized notification.refresh event
+  Web->>Core: Re-read durable notification inbox
+  Core-->>Web: Current authorized state`;
+
+<Meta title="Nirog / 10 Subsystem Reference / 07 Realtime Notification Decision" />
+
+# Realtime Notification Decision
+
+## Decision
+
+**Do not migrate Nirog’s primary PostgreSQL database from Neon to Supabase solely to add realtime notification delivery.** Supabase Realtime is technically compatible with Nirog’s Clerk-based identity model, but the migration would be a materially larger database, authorization, and operations project than the notification capability requires.
+
+The recommended next increment is a **Core-owned, Clerk-authenticated server-to-client notification stream**. It should emit only a `notification.refresh` hint after Nirog has committed a durable inbox record. The Web companion then re-reads the existing profile-authorized inbox through Core. The stream is therefore an acceleration layer, never a source of truth or a substitute for the durable notification lifecycle.
+
+<MermaidDiagram title="Recommended durable-notification and realtime-hint flow" chart={recommendedFlow} />
+
+## What exists today
+
+Nirog already has a real user-visible **in-app notification** capability, but it is not a realtime socket or stream. The dispatcher consumes `reminder.due.v1` and inserts a minimal, idempotent record into `clinical.in_app_notifications`. The record is profile-scoped, protected by Nirog RLS, and read through the Clerk-authenticated Web-to-Core proxy. The Web companion currently refreshes its durable read model after actions and on user refresh.
+
+There is no Supabase client, Supabase Realtime channel, WebSocket endpoint, Server-Sent Events endpoint, or direct browser database access in the current Core or Web source. There is also no external push, SMS, or email provider adapter. Those are distinct delivery channels and must not be inferred from in-app inbox delivery.
+
+## Why Supabase is technically compatible
+
+Supabase officially supports Clerk as third-party authentication for Data APIs, Storage, and Realtime. Clerk session tokens must include the PostgreSQL `role` claim and Supabase must be configured to trust Clerk’s asymmetric signing keys.[1] [2]
+
+For a future realtime-only design, Supabase recommends private **Broadcast** channels with RLS on `realtime.messages`. It recommends Broadcast over Postgres Changes for security and scalability, while Postgres Changes authorizes every change for every subscribed user and processes change events in order on one thread.[3] [4]
+
+> Compatibility is not equivalence. Clerk token verification would work, but Nirog’s profile ownership and delegated-caregiver permissions would still need new RLS predicates that join Nirog’s own authorization tables. A generic “all authenticated users” policy would violate the current profile-scoped access model.
+
+## Why a primary-database migration is not the right next move
+
+Nirog uses Drizzle/Postgres.js with explicit transactions and transaction-local `app.account_id`, `app.profile_id`, `app.purpose`, and `app.workload` settings. These settings drive its existing RLS and dispatcher-only database access. Its clinical data is split across custom schemas and many migrations conditionally create grants and policies for a custom `nirog_api` role.
+
+Supabase’s own migration guidance says that standard Postgres dump/restore does **not** transfer database roles or RLS status. Those controls need deliberate recreation and testing after the move.[5] A connection-string replacement alone could therefore leave grants or policies unapplied. In addition, Nirog would need a cutover plan for the API, dispatcher, migrator, Core-only service identity, RLS tests, data validation, rollback, and evidence of no split-brain writes.
+
+Supabase connection pooling is not a blocker by itself: Nirog already turns off prepared statements, which Supabase requires for transaction pooling. However, its persistent API and dispatcher should use a session-capable route if transaction-local session behavior needs to survive multi-statement RLS work; migrations require direct or session connectivity.[6]
+
+## Recommended implementation path
+
+### First: add a Core-owned SSE notification hint stream
+
+The Core API should expose one authenticated, profile-authorized SSE endpoint. It should reuse the same Clerk verification and profile-permission resolver as ordinary Core reads. Its event body should contain **no prescription text, medication values, evidence data, or external-delivery claim**—only a generic refresh signal. The Web companion responds by re-reading `GET /profiles/:profileId/notifications` through the current same-origin proxy.
+
+SSE matches the current product behavior because notification delivery is server-to-client; acknowledgement and other actions already use ordinary HTTP mutations. Railway documents SSE as appropriate for notification feeds and confirms WebSocket support if Nirog later needs bidirectional interaction.[7] [8] The implementation must send heartbeats, handle reconnects, and treat a reconnect as a durable-inbox refresh rather than relying on the transient stream.
+
+For horizontal API scaling, dispatch the post-commit refresh hint through the existing shared relay infrastructure rather than process memory. The durable inbox insert remains the transactional fact; the relay simply shortens the time until the browser notices it.
+
+### Later, only if product scale justifies it: evaluate Supabase Broadcast as a dedicated transport
+
+If Nirog reaches a need for large numbers of simultaneous client subscriptions, mobile parity through Supabase client libraries, or a separately operated realtime plane, evaluate a **transport-only** Supabase Broadcast proof of concept. Do not start with a database migration. The proof must use private profile topics, Clerk third-party auth, direct Realtime RLS authorization, tiny identifier-free refresh hints, reconnect-to-Core read behavior, and explicit negative tests for owner, caregiver, revoked grant, wrong profile, and expired token cases.
+
+Only after that proof meets the authorization, operational, and cost criteria should a separate decision consider moving the primary database. Supabase Broadcast messages are transient transport events; the durable Core inbox remains necessary even in that design.[3]
+
+## Decision matrix
+
+### Retain Neon and add Core SSE — **recommended now**
+
+This has the smallest change surface. It preserves Clerk validation, Core’s current RLS functions, the dispatcher/outbox, Drizzle migrations, and the durable inbox. It is appropriate for one-way in-app notifications and does not introduce a second authorization system.
+
+### Migrate primary PostgreSQL to Supabase and use Realtime — **not recommended now**
+
+This can deliver Broadcast and client libraries, but requires a security-sensitive replatforming of roles, RLS, migration process, database cutover, and operating assumptions. It solves a transport concern by moving the system of record, which is disproportionate to the current requirement.
+
+### Use Supabase Broadcast as a separate transport later — **conditional future option**
+
+This may become useful when concurrency, mobile delivery consistency, or managed realtime operations justify the extra Clerk/Reatime RLS integration. It should be introduced as a bounded proof of concept while the durable Core inbox remains authoritative.
+
+## Credential handling
+
+No supplied Supabase credential was used or stored in source code, configuration, Storybook, or this page because the primary-database migration was not selected. Any credentials previously sent in a chat should be rotated in the provider dashboard before production use.
+
+## References
+
+[1]: https://supabase.com/docs/guides/auth/third-party/clerk "Supabase Docs: Clerk third-party authentication"
+[2]: https://supabase.com/docs/guides/auth/third-party/overview "Supabase Docs: Third-party authentication"
+[3]: https://supabase.com/docs/guides/realtime/subscribing-to-database-changes "Supabase Docs: Subscribing to Database Changes"
+[4]: https://supabase.com/docs/guides/realtime/benchmarks "Supabase Docs: Realtime benchmarks"
+[5]: https://supabase.com/docs/guides/platform/migrating-to-supabase/postgres "Supabase Docs: Migrate from Postgres to Supabase"
+[6]: https://supabase.com/docs/guides/database/connecting-to-postgres "Supabase Docs: Connect to Postgres"
+[7]: https://docs.railway.com/guides/sse-vs-websockets "Railway Docs: Choose Between SSE and WebSockets"
+[8]: https://docs.railway.com/networking/public-networking/specs-and-limits "Railway Docs: Networking specs and limits"

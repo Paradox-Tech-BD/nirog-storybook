@@ -94,6 +94,8 @@ Patients and authorized caregivers can submit only when Core grants the applicab
 
 The Web companion uses problem responses for authentication, configuration, token, and Core-reachability failures. It uses per-action UI state for upload and draft-submission failures, and it reports that a failed submission did not create a regimen. UI errors are not a substitute for server-side authorization or idempotency.
 
+The medication-save workflow includes a draft-correction `PATCH` before the subsequent explicit regimen and draft-submission commands. The same-origin proxy must export that method as well as allow the already bounded medication-draft path. A production `405` report on 23 August 2026 identified that the Web route had omitted the `PATCH` export even though Core correctly exposes the update contract. Web commit `7f753cf` adds the missing export and a route-forwarding regression test. The complete Web suite passed ten tests, lint, and the production build. A non-mutating empty-body live probe reached Core validation with `400`, not a method rejection, proving the proxy path is live without changing a draft or creating a regimen.
+
 The Web companion also treats an unavailable manager-only grant roster as a bounded partial-read outcome. A default caregiver can still receive the self-only access context provided by Core. This prevents an access-governance permission from becoming an accidental prerequisite for ordinary profile visibility.
 
 ## Source of truth

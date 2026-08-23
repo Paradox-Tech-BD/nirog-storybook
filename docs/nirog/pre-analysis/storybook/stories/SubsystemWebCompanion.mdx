@@ -36,6 +36,16 @@ The prescription-evidence workspace lets a signed-in user select a profile and p
 
 The interface distinguishes the user-visible stages of **authorization**, **transfer**, **queueing**, and **completion**. Client-side validation checks the permitted file type and size before initiating the workflow. A failed upload does not silently create a completed evidence record, and a failed UI attempt is not described as a clinical change.
 
+The file chooser is a native, labelled browser control rather than a hidden-input-only interaction. This preserves the same protected upload sequence while improving keyboard, assistive-technology, and browser-automation access. Selecting a file validates it locally; the separate “Start automatic extraction” action is the only browser action that authorizes the normal evidence-upload and OCR-queue sequence.
+
+### Verified automatic-draft acceptance
+
+On 23 August 2026, one user-authorized production upload completed through the normal signed-in workspace. Aggregate persisted state transitioned to processed evidence with one extraction, seven candidates, and seven editable correction-required drafts. The browser rendered the persisted processing and draft state only after Core recorded it; it did not infer success from the upload acknowledgement.
+
+The worker encountered a retryable primary-provider quota response and completed through its configured bounded fallback. This validates the Web path as a consumer of Core-authoritative state, not a provider-status simulator. It does not imply that provider availability is unlimited; a later quota-limited run must remain visibly deferred or retryable until Core records a terminal or successful outcome.
+
+No medication field value is documented here. No editable-draft field was changed, no “Confirm and save medication regimen” action was invoked, and the submitted-draft aggregate remained zero. The result therefore verifies automatic ingestion and draft creation, not regimen creation or clinical confirmation.
+
 ## Stable clinical read model
 
 The workspace performs a stable, explicit Core-read bootstrap instead of recursively recreating its own loader from React state updates. It reads the account/profile projection, prescription list, evidence metadata, extraction metadata, medication drafts, and permitted care-circle summary through the server bridge. Independent downstream reads are allowed to resolve separately, so a partial status failure does not erase the whole workspace or leave the user facing an unexplained blank screen.

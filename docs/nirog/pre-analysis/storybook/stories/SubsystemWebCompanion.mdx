@@ -98,6 +98,12 @@ The deployed owner acceptance on 23 August 2026 completed a user-authorized test
 
 The care-plan interface now exposes an open refill-alert acknowledgement control only when Core returns an authorized open alert. This closes the earlier observability gap: the UI can read the alert, acknowledge it through the profile- and regimen-scoped command, and refresh the resulting status. It does not infer alert state from a stock display or attempt to derive an identifier in the browser.
 
+### Read-stability repair and live UI check
+
+The first selected-regimen production check found that the client loader had been recreated when its own profile or regimen state changed. A slow optional read could therefore make the page appear to keep loading even after Core had returned the primary context. Web commit `7ba652a` makes the loader stable, protects it with a request-generation guard, bounds optional care reads, constructs the daily-adherence date in the selected profile timezone, and moves the care-plan URLs into a tested helper.
+
+The helper intentionally omits optional numeric `limit` values from occurrence and movement reads, allowing Core’s server-side defaults to apply rather than depending on string-to-integer coercion at the proxy boundary. The new regression test checks both the profile-timezone date and this query construction. The deployed UI was then refreshed, the authorized test regimen selected, and the page reached its ready state while rendering the aggregate adherence, occurrence, inbox, inventory-ledger, and refill-history sections.
+
 > **Delivery boundary:** a delivered reminder currently produces a durable, user-visible **in-app** inbox record. The current environment has no configured push, SMS, or email adapter, provider receipt, or external-delivery UI. A notification count must therefore never be described as a phone message, push notification, or email.
 
 ## Error-handling expectations

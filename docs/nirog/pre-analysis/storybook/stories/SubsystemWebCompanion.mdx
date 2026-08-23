@@ -60,6 +60,14 @@ The authenticated Web navigation includes a separate **Care circle** destination
 
 This solves a practical default-caregiver boundary. A caregiver with `profile.read` can discover an active delegated profile and see their own access context. The complete grant roster remains a manager-only capability protected by `share.manage`; its failure is not used to hide the caregiver’s own authorized care workspace. Neither page grants `regimen.write`, changes a relationship, or blocks automatic extraction.
 
+### Live delegated-caregiver verification
+
+On 23 August 2026, a dedicated development-only identity received one owner-created, time-bounded `caregiver` grant and exercised the production Web path. Core returned the recipient’s own `grant` access kind, `caregiver` role, and eight-permission snapshot. The snapshot included the configured profile, evidence-metadata/evidence-image, and regimen-read capabilities; it excluded **`regimen.write`** and **`share.manage`**. The live browser therefore confirmed that an authorized caregiver can inspect aggregate evidence, extraction, confidence, and draft status without becoming a routine extraction gate or care-circle manager.
+
+The test exposed and then corrected a client-boundary defect. Before the repair, the browser rendered editable medication fields and regimen-confirmation controls despite the absence of `regimen.write`. The Core command boundary would still have rejected a mutation, but the interface was misleading and unnecessarily presented a clinical action. The repaired workspace reads the self-only Core access context before rendering actionable controls. A read-only caregiver now receives draft status and confidence summaries only: the deployed verification observed **seven** read-only summaries, **zero** editable clinical controls, **zero** regimen-submit controls, and no evidence-upload control. The workspace also skips the manager-only roster read for a caller without `share.manage`, preventing a false access-warning banner.
+
+Temporary test cleanup also verified the narrow same-origin bridge. The proxy now allowlists the UUID-scoped profile-grant revocation endpoint and forwards `DELETE` using the active Clerk token. It preserves bodyless upstream responses such as Core’s `204` revocation success instead of incorrectly converting them to a gateway failure. The temporary grant was revoked, and the user-confirmed synthetic Clerk development identity was deleted. No clinical field, draft, evidence, or regimen was changed during this exercise.
+
 ## Confidence and correction experience
 
 The UI presents the field-confidence threshold as **0.70**. A candidate with an eligible confidence can pre-populate a field, while a missing or lower-confidence field is visibly marked for correction. Medication name, dose, route, frequency, schedule times, and interval remain editable inputs.
@@ -72,7 +80,7 @@ The visible “Save medication regimen” action is deliberately separate from O
 
 > Uploading evidence, completing OCR, or seeing a high-confidence field must never create a regimen by itself.
 
-Patients and authorized caregivers can submit only when Core grants the applicable write permission. Caregivers with inspection access may see provenance and draft state, but they do not routinely block automatic extraction.
+Patients and authorized caregivers can submit only when Core grants the applicable write permission. Caregivers with inspection access may see provenance and draft state, but they do not routinely block automatic extraction. The browser must use the same Core permission snapshot to withhold mutation controls, while Core remains the authoritative enforcement point for every command.
 
 ## Error-handling expectations
 

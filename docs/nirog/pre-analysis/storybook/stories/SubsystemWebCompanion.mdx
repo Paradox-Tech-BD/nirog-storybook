@@ -46,6 +46,10 @@ The worker encountered a retryable primary-provider quota response and completed
 
 No medication field value is documented here. No editable-draft field was changed, no “Confirm and save medication regimen” action was invoked, and the submitted-draft aggregate remained zero. The result therefore verifies automatic ingestion and draft creation, not regimen creation or clinical confirmation.
 
+### Post-repair functional acceptance
+
+After the focused ML callback repair was deployed, the signed-in owner selected the authorized JPEG through the native file control and invoked the ordinary automatic-extraction action once. Core then persisted `processed` evidence, one extraction, and seven editable drafts. This is a second, independent functional confirmation that the browser presents Core-authoritative processing state rather than treating the upload acknowledgement as success. No clinical field was edited and no draft, regimen, reminder, or other clinical command was submitted.
+
 ## Stable clinical read model
 
 The workspace performs a stable, explicit Core-read bootstrap instead of recursively recreating its own loader from React state updates. It reads the account/profile projection, prescription list, evidence metadata, extraction metadata, medication drafts, and permitted care-circle summary through the server bridge. Independent downstream reads are allowed to resolve separately, so a partial status failure does not erase the whole workspace or leave the user facing an unexplained blank screen.

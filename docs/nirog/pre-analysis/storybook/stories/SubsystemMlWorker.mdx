@@ -69,6 +69,8 @@ Later on 23 August 2026, one newly supplied owner-authorized JPEG was submitted 
 
 The proven defect was at the private result boundary: the worker’s candidate serializer sent unread optional string and numeric fields as JSON `null`, whereas the Core TypeBox schema accepts those fields only when absent. Core commit `e50b4d3` now removes null-valued optional fields while retaining required schedule and interval values, and adds a synthetic payload regression test at the Core-client boundary. The complete isolated ML-worker suite passed 26 tests and the targeted Railway worker deployment reached success. The already terminal record was deliberately not manually requeued or resubmitted, so this repair is not documented as a new successful extraction. No image content, OCR output, medication field, draft edit, or regimen action was accessed or created.
 
+The repair was subsequently confirmed through one new normal owner-initiated automatic run using the authorized JPEG. The aggregate persisted result was processed evidence, one extraction, and seven editable drafts. No result-callback `400` appeared in the active repaired worker runtime, and no medication, draft, or regimen command was issued by the verification. This confirms the callback-contract repair as functional in the deployed asynchronous path while leaving all clinical confirmation explicit and separate.
+
 ## Source of truth
 
 The worker implementation, settings validation, Core client, extractor, Dockerfile, and test suite are in [Nirog Core’s ML worker directory](https://github.com/Paradox-Tech-BD/nirog-core/tree/main/workers/ml). This page intentionally omits model keys, worker identities, private origins, signed evidence capabilities, and any OCR content.

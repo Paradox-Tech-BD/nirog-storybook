@@ -1,0 +1,45 @@
+---
+title: Consent-Aware Notification Policy Increment
+---
+
+# Consent-Aware Notification Policy Increment
+
+## Outcome
+
+Nirog now has a profile-scoped, owner-managed **notification policy** model. A policy records whether an eligible account may receive a particular event category through a selected channel, in the profile’s local timezone and with optional quiet hours. It is an eligibility and preference record only: this increment does **not** enable email, SMS, or push delivery.
+
+The Core revision is `5986d51`. Its forward-only `0021_notification_policies` migration and targeted API revision both deployed successfully through the existing Railway migrator and API services. The unrelated `nirog-core` pending service release was left untouched.
+
+## Ownership and recipient eligibility
+
+The profile owner is the only actor who can list, create/reactivate, or withdraw policy records. The owner may select themself immediately. A delegated recipient must have both an active, unexpired profile grant and an active, unexpired `notification-delivery` consent for the same profile. Any other candidate is rejected before a policy is persisted.
+
+> A profile-access grant alone is not notification delivery permission. The additional consent is an explicit policy boundary, and later provider activation must enforce it again at dispatch time.
+
+Policies support `reminder_due` and `refill_alert` event categories, and may name `in_app`, `email`, `push`, or `sms` as the intended channel. Naming a channel is not proof that a provider, device registration, phone path, or email domain exists.
+
+## Persisted lifecycle
+
+Each record is unique by profile, recipient, event category, and channel. Owner updates reactivate the same record with a new effective timestamp. Withdrawal sets a lifecycle state and timestamp; it never erases the separate non-sensitive delivery-attempt ledger. Optional quiet hours must be supplied as a complete local start/end pair in `HH:MM` form.
+
+The migration enables RLS and grants only the API role. Its policy requires the request’s current profile context and confirms that the current account owns that profile. The dispatcher has not been granted policy-table access because external delivery is still disabled.
+
+## Core contract
+
+The API exposes owner-authorized, Clerk-protected routes under the profile boundary.
+
+- `GET /profiles/{profileId}/notification-policies` returns the safe policy projection.
+- `PUT /profiles/{profileId}/notification-policies/{recipientAccountId}` creates or reactivates an eligible policy and requires an idempotency key.
+- `DELETE /profiles/{profileId}/notification-policies/{recipientAccountId}` withdraws a selected active policy and requires an idempotency key.
+
+The projection contains no email address, phone number, device token, raw provider response, or medication content. The deployed OpenAPI artifact exposes the collection `GET` and selection `PUT`/`DELETE` operations with bearer security.
+
+## Verification record
+
+Focused command tests prove that an ineligible delegate is rejected and that incomplete quiet hours are invalid. Focused HTTP tests prove idempotency enforcement, safe response shaping, and withdrawal handling. A migration-contract test verifies lifecycle checks, API-role grant, RLS enablement, and owner predicate. The complete Core gate passed with **105 tests passed** and **9 expected skips**, plus formatting, linting, and typechecking.
+
+The public deployed OpenAPI document was queried only for path-operation metadata. It confirms the collection `GET`, selection `PUT`/`DELETE`, and bearer-security declarations. A protected cross-origin record read from the Web origin remained unavailable because the Web same-origin proxy has not yet been extended for this endpoint; that is intentional until the owner-facing status increment adds its UI and proxy path together.
+
+## What follows
+
+The next increment adds signed provider-webhook reconciliation and replay-safe delivery-lifecycle persistence, while preserving the fail-closed disabled-provider configuration. That work will use these policy records as a future dispatch eligibility input but will not turn on a provider without complete operator configuration.

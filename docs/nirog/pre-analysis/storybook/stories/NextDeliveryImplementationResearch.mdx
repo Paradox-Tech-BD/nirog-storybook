@@ -1,0 +1,85 @@
+---
+title: Next Delivery Implementation Research and Recommendation
+---
+
+# Next Delivery Implementation Research and Recommendation
+
+## Decision
+
+The recommended next implementation is an **owner-controlled notification-policy workspace** in Nirog Web. It should expose the already deployed, owner-only Core policy APIs through narrow same-origin proxy paths and present policy intent without claiming a configured provider, a send, delivery, reading, or adherence.
+
+This is the smallest increment that gives an owner meaningful control over recipient eligibility, event class, intended channel, timezone, quiet hours, pause/withdrawal, and consent-dependent delegation. It does not need a sender credential, verified email domain, encryption key activation, service worker, VAPID key, push provider, or external test message.
+
+> **Decision boundary:** a notification policy expresses allowed and intended delivery behavior. It is not evidence that a channel is configured, that a message was submitted to a provider, that a device received it, that a person read it, or that a dose was taken.
+
+## Current baseline
+
+Core already provides owner-only list, upsert/reactivate, and withdraw operations for profile notification policies. Policies cover `reminder_due` and `refill_alert`; their intended channels include `in_app`, `email`, `push`, and `sms`. A delegated recipient is eligible only with an active grant and active `notification-delivery` consent. The policy response contains account identifiers, policy state, channel, event class, timezone, quiet-window metadata, and lifecycle timestamps—but no recipient address, phone number, token, provider payload, or clinical content.
+
+The public Web companion now displays safe provider configuration and attempt lifecycle metadata for owners, but it deliberately has no policy-management interface and does not proxy policy routes. The deployed external email adapter is disabled. Delivery registrations are encrypted foundations only; their encryption key is intentionally absent until a real client opt-in flow exists.
+
+## Research findings
+
+Browser push is technically viable but is an end-to-end feature, not a configuration toggle. The Push API requires an active service worker; a subscription carries a capability endpoint and encryption material, which must be protected. Browsers expect permission to be requested in direct response to a user gesture, and notifications must use a service-worker path on mobile. [1] [2]
+
+FCM adds provider-specific work beyond the existing registration database: a VAPID credential, server sender credential, sender adapter, registration freshness, retry classification, invalid-registration retirement, and carefully scoped delivery measurement. FCM’s own guidance distinguishes acceptance from delivery, reports some metrics only in delayed or aggregated forms, and requires a separate consent decision for Web delivery-data export. [3] [4] [5]
+
+Apple’s standards-based Web Push support follows the same explicit opt-in model, but iOS and iPadOS apply it to Home Screen web apps. Apple also requires push receipt to result in an immediate visible notification, and the server must implement VAPID, encrypted payloads, endpoint-response handling, expiry, and rate controls. [6] [7]
+
+Email activation is operationally closer because Nirog already has the dispatch/reconciliation model. Nevertheless, Resend requires a verified owned sending domain, recommends a purpose-specific subdomain, and delivers webhooks at least once and potentially out of order. Its documented retry and replay behavior reinforces why Nirog’s existing Svix verification, deduplication, event-time ordering, and receipt ledger were necessary—but it does not remove the need for a verified sender, sender credential, registered signing secret, and controlled end-to-end activation test. [8] [9] [10]
+
+Finally, activating the delivery-registration encryption key alone creates key-lifecycle responsibility without a user-visible result. OWASP recommends authenticated encryption, minimizing stored sensitive data, and defining generation, deployment, rotation, and retirement processes before encrypted data becomes relied upon. [11]
+
+## Option comparison
+
+| Candidate next increment | User-facing value | Prerequisites not yet satisfied | Delivery risk | Recommendation |
+| --- | --- | --- | --- | --- |
+| **Owner notification-policy workspace** | Gives the owner transparent control over channel intent, quiet hours, recipient eligibility, and withdrawal | None beyond existing Core APIs and existing owner/grant reads | No provider dispatch; a policy is safely non-delivery | **Implement next** |
+| Browser push client opt-in | Lets a signed-in account register an opted-in web endpoint | Service worker, user-gesture UX, manifest/PWA treatment, VAPID, encryption-key provisioning, capability tests | No send yet, but creates encrypted delivery state | Follow policy UI |
+| Resend controlled activation | Enables one real external email channel | Verified domain, sender identity, API credential, webhook registration/secret, controlled non-personal test recipient and recovery plan | External irreversible send path | Defer until policy control and operational details are ready |
+| FCM sender adapter | Enables actual cross-platform push dispatch | Google credential, VAPID, sender adapter, generalized attempt/retry logic, invalid-token handling, client app | Large provider and client surface | Defer until opt-in registration is live |
+| Registration-key activation only | Makes encrypted registration persistence available | Key lifecycle and client registration workflow | Stores sensitive delivery material without product value | Do not activate alone |
+| Operations alert destination configuration | Enables external operational escalation | Selected destination and Railway plan constraints | Operational, not user-delivery value | Keep as a separately configured runbook item |
+
+## Implementation-ready scope: policy workspace
+
+The Web increment should add three exact Core proxy routes: the owner policy collection `GET`, a recipient selection `PUT`, and a selected-policy `DELETE`. The existing proxy should continue to exclude external webhooks, raw delivery registrations, provider payloads, and internal worker paths.
+
+The care experience should resolve the selected profile’s self-only access context before rendering the workspace. A delegated actor should see a clear non-editable explanation rather than policy data or controls. An owner should see only recipient kind and active grant role necessary to select an eligible recipient; the interface must not infer or display an email address, phone number, device target, or provider configuration secret.
+
+Policy creation and editing should collect only the existing Core contract: event class, intended channel, profile timezone, and an optional complete quiet-hours pair. Withdrawal should be an explicit idempotent action scoped by recipient, event class, and channel. Every external-channel row must say that its channel is **not configured** unless the existing delivery-status read says otherwise. In-app policy intent must likewise remain distinct from a materialized durable inbox record.
+
+| Test layer | Required evidence |
+| --- | --- |
+| Web unit tests | Exact route allowlist; rejected near-paths; owner/delegated display mapping; quiet-hour shape; idempotency header; no recipient contact or delivery-target fields in UI models |
+| Core contract regression | Existing policy API response and authorization tests remain green; no API extension is required for the initial UI |
+| Browser acceptance | Owner context can list, create/update, and withdraw a policy through the same-origin bridge; delegated context has no mutation control; no provider send is triggered |
+| Release verification | Web lint, unit suite, production build, generated Core OpenAPI recheck, and aggregate-only post-deploy state validation |
+
+## Explicit non-goals
+
+This recommended increment does not activate Resend, configure a sending domain, create an email recipient, add an FCM project, add a service worker, prompt for browser permissions, configure VAPID, set the delivery-registration key, submit a provider send, or interpret a provider result as read/adherence. These remain separate, testable increments after policy control and client opt-in preparation.
+
+## References
+
+[1] [MDN: Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API)
+
+[2] [MDN: Using the Notifications API](https://developer.mozilla.org/en-US/docs/Web/API/Notifications_API/Using_the_Notifications_API)
+
+[3] [Firebase: Get started with FCM in Web apps](https://firebase.google.com/docs/cloud-messaging/web/get-started)
+
+[4] [Firebase: Best practices for FCM registration management](https://firebase.google.com/docs/cloud-messaging/manage-tokens)
+
+[5] [Firebase: Send with the HTTP v1 API](https://firebase.google.com/docs/cloud-messaging/send/v1-api)
+
+[6] [Apple Developer: Sending web push notifications in web apps and browsers](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers)
+
+[7] [WebKit: Web Push for Web Apps on iOS and iPadOS](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)
+
+[8] [Resend: Verified domains](https://resend.com/docs/dashboard/domains/introduction)
+
+[9] [Resend: Managing webhooks](https://resend.com/docs/webhooks/introduction)
+
+[10] [Resend: Retries and replays](https://resend.com/docs/webhooks/retries-and-replays)
+
+[11] [OWASP: Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)

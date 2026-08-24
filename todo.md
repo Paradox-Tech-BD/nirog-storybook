@@ -29,6 +29,17 @@
 
 ## Authorized prescription-ingestion recovery
 
+## Autonomous remaining-increments delivery
+
+- [x] Implement a Clerk-authenticated, profile-authorized Core notification-hint stream that preserves the durable inbox as source of truth and never carries clinical payloads.
+- [x] Extend the Web companion to receive the authorized live refresh hint, re-read the durable inbox, reconnect safely, and remain functional when streaming is unavailable.
+- [x] Apply and verify a scoped formatting-only Core cleanup so the complete repository verification command passes under the supported runtime without behavioral change.
+- [x] Add an external-delivery adapter contract, provider-health model, delivery-attempt audit path, and Scalar documentation; activate a real provider only when valid environment configuration exists.
+- [x] Add aggregate operability signals for inbox delivery lag, failed/dead-lettered outbox work, ML retry exhaustion, and migration failure, then document ownership and recovery.
+- [ ] Run final Core, dispatcher, Web, and production aggregate-only acceptance checks; publish Storybook and API documentation updates through normal main-to-next synchronization.
+
+> **Autonomous delivery increment — 24 August 2026:** Core and the Web companion now support a profile-authorized SSE `notification.refresh` hint through the existing same-origin proxy. The event contains no clinical payload and the companion always re-reads the durable inbox; a bounded connection and ordinary read fallback preserve behavior when streaming is unavailable. Core `pnpm verify` now passes after a formatting-only baseline commit. The optional Resend email adapter, profile-scoped delivery-attempt ledger, provider status, and authenticated audit read are deployed but disabled because no provider configuration is present; no external delivery has been attempted or claimed. The forward-only ledger migration completed successfully. A protected internal operations snapshot reports only aggregate outbox claim/dead-letter counts, OCR retry/dead-letter counts, oldest unacknowledged inbox age, and the explicit requirement to monitor migrator failures through deployment monitoring. The API and migrator revisions completed successfully; the unrelated `nirog-core` and dispatcher approvals were not touched.
+
 ## Complete end-to-end acceptance recovery
 
 ## Realtime notification architecture decision

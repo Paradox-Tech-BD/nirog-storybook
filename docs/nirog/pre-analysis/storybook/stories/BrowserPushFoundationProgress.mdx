@@ -4,28 +4,36 @@ title: Browser Push Foundation Progress
 
 # Browser Push Foundation Progress
 
-## Implemented source boundary
+## Scope and implemented boundary
 
-The browser-push foundation is implemented and published in Core revision `441c06f` and Web revision `99d025b`. It adds an explicit browser-controlled opt-in surface, a minimal service worker, an installable Web manifest, safe same-origin proxy paths, and encrypted Core registration synchronization/revocation integration. It still has **no push sender, no provider credential, no private VAPID material, and no push delivery claim**.
+Nirog has implemented the **browser Web Push registration foundation**, not a push-delivery feature. Core revision `441c06f` introduced the authenticated capability contract and encrypted registration boundary. Web revision `99d025b` introduced a deliberate opt-in card, minimal service worker, installable manifest, same-origin proxy allow-list, VAPID decoding, and self-only registration/revocation requests. The deployed implementation has **no push sender, provider credential, private VAPID key, FCM configuration, provider payload, or push-delivery claim**.
 
-Core adds the authenticated `GET /api/v1/delivery-registrations/web-push/config` capability contract. It returns a public VAPID key only when both encrypted registration persistence and a public VAPID key are configured. It never exposes the registration encryption key, a private VAPID key, provider sender credentials, targets, ciphertext, or registration identifiers through the capability response.
+The authenticated Core capability route, `GET /api/v1/delivery-registrations/web-push/config`, discloses a public VAPID key only when encrypted registration persistence and the public key are both configured. It never returns the registration-encryption key, a VAPID private key, a provider credential, a browser target, ciphertext, or a registration identifier. The registration command accepts browser endpoint and key material only through the existing encrypted Core persistence boundary; the Web companion never renders those values back to the user.
 
-| Layer | Implemented behavior | Explicit safety boundary |
-| --- | --- | --- |
-| Browser UI | Requests permission only after a person selects **Set up browser push** | No automatic prompt; no permission request when capability is unavailable |
-| Service worker | Handles a future push event with a generic Nirog notification and opens the care plan on click | Does not parse, store, or display clinical payload content |
-| Registration command | Submits endpoint and `p256dh`/`auth` material to the existing encrypted Core registration API | Browser target/key material is never rendered back into Web |
-| Revocation | Calls the idempotent self-registration DELETE route, then unsubscribes the local browser subscription | Revocation is not a claim that a provider message was cancelled |
-| Capability gate | Requires both Core encryption-key availability and a public VAPID key | No sender, send adapter, FCM credential, or external delivery |
+> **Delivery terminology:** a saved registration enables a future sender to target an opted-in browser. It does not mean that any notification was sent, delivered, displayed, read, or acted upon.
 
-## Verification record
+## Runtime capability activation
 
-The Core quality gate passed with **117 tests passed** and **9 expected skips**. It covers the encrypted target boundary, malformed provider/platform rejection, fail-closed registration behavior, public VAPID configuration parsing, and capability disclosure only when both required registration prerequisites exist. The Web suite passed with **12 test files and 23 tests**; ESLint and the production Next.js build also passed. The Web deployment for `99d025b` completed successfully.
+The targeted Railway service `@nirog/api` is online with the required API-only registration encryption prerequisite and public VAPID configuration present. A temporary safe startup diagnostic confirmed only the two prerequisite booleans, then was removed from active Core source. The cleanup revision `62db1aa` completed successfully on the targeted API service. The unrelated Railway service named `nirog-core` was not approved or changed.
 
-The active Nirog repositories now use the designated Git identity `rinattok21 <rinattok21@gmail.com>`. A deliberately empty source-trigger revision `9ab26ca` followed the verified Core change through the approved source-push release path. The released Web page was reopened in an authenticated session, and a read-only same-origin status check now returns `200` from the Core capability endpoint. The panel correctly reports that setup is **not configured** and does not request browser permission. This confirms the targeted API now serves the safe capability route while neither registration prerequisite is configured.
+The Vercel connector was used to verify the Nirog Web production project and its deployment. Its runtime observation confirmed that the Web server reaches the active `@nirog/api` host and receives HTTP `200` for the capability request. The response follows the standard Core success envelope: the active result appears within `data`, where capability is available and a public VAPID key is present. A top-level-only inspection therefore appeared unavailable even though the actual typed client path was correctly enabled. The temporary Web proxy diagnostic used to establish that fact was removed in cleanup revision `829da3f`, which is deployed to production.
 
-## Remaining completion boundary
+The notification-policy workspace now correctly renders **Set up browser push** only after the capability response is available. Permission is requested only from that user-initiated action; loading the page does not trigger a permission prompt.
 
-Increment 7 remains open until a controlled configuration decision is made. Real browser registration requires both `NIROG_DELIVERY_REGISTRATION_ENCRYPTION_KEY` and `NIROG_WEB_PUSH_VAPID_PUBLIC_KEY`; the first is sensitive and must remain API-only, while the second is public but is disclosed only through the authenticated capability endpoint. Neither setting creates a sender or a push message by itself.
+## Controlled browser test outcome
 
-The Railway dashboard was not used to approve or mutate any service. No unrelated Railway service was approved, and no key was configured. The safe next validation is one controlled browser registration and immediate revocation after the two configuration values have been set; it must not include provider sending, clinical payloads, or recipient data.
+One controlled opt-in attempt was made from an authenticated owner session. The service worker registered successfully, but the automated browser remained at the browser-native notification state `default` / `prompt` and did not surface a grantable permission dialog. It created **no PushSubscription**, submitted **no encrypted Core registration**, and therefore had no registration to revoke. No external notification was sent and no provider configuration was added.
+
+This is a browser-automation limitation, not proof that the registration lifecycle has failed. Increment 7 remains open until a person uses a real device or a browser session where the native notification permission can be granted, completes one registration, and immediately revokes it through the same self-only UI. The follow-up must verify only safe lifecycle state: that the UI reflects a local registration, then returns to the unregistered state after revocation and local unsubscribe. It must not inspect or publish endpoint material, subscription keys, target values, recipient details, or credentials.
+
+## Verification and quality record
+
+Core `pnpm verify` passed after the diagnostics were removed: **41 test files passed**, **1 file skipped**, **117 tests passed**, and **9 expected skips**. The expected OCR fixture console noise remains unrelated to browser push. Web verification also passed after cleanup: **12 test files and 23 tests**, ESLint, and a production Next.js build under `NODE_ENV=production`.
+
+The temporary capability diagnostics were introduced only to distinguish three non-sensitive conditions: whether the active API process saw its prerequisites, whether the Web proxy targeted that active API host, and whether the capability data was inside the usual success envelope. Once each condition was confirmed, both diagnostics were removed and their cleanup deployments completed.
+
+## Required manual completion protocol
+
+From an authenticated owner browser where the native notification prompt can be granted, open **Notification policies** and select **Set up browser push**. Grant permission at the browser prompt, wait for the page to report a registration-safe status without target data, then use the page’s self-only revoke control immediately. Confirm that the local subscription is absent and the page returns to its unregistered presentation.
+
+The test must stop there. It must not enable a sender, add FCM, configure a VAPID private key, send a test notification, expose a provider target, create a clinical notification, or imply real-world delivery. After that registration-and-revocation proof succeeds, the increment can be marked complete and the next delivery increment may assess external email activation prerequisites separately.

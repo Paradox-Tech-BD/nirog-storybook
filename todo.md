@@ -37,7 +37,7 @@
 - [x] Increment 2: implement profile-scoped notification preferences and consent-aware recipient eligibility, with focused RLS and API coverage.
 - [x] Increment 3: implement signed external-email webhook reconciliation, replay-safe deduplication, and lifecycle ordering while keeping the external provider disabled unless complete configuration exists.
 - [x] Increment 4: introduce encrypted delivery-registration foundations and client opt-in/revocation contracts required for future push delivery; do not claim a working push provider.
-- [ ] Increment 5: expose truthful owner-facing delivery-channel status through the existing Core/Web path, then complete full acceptance checks and Storybook publication.
+- [x] Increment 5: expose truthful owner-facing delivery-channel status through the existing Core/Web path, then complete full acceptance checks and Storybook publication.
 
 - [x] Re-run the signed-in production care-plan and authorized notification checks from the exact route after the final API and dispatcher deployments, recording only aggregate readiness and transport outcomes.
 - [x] Research, compare, and prioritize the next implementation increments against the deployed Core, Web, dispatcher, ML, delivery-adapter, and operations architecture; publish only evidence-supported recommendations.

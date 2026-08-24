@@ -1,0 +1,51 @@
+---
+title: Signed External-Email Webhook Reconciliation Increment
+---
+
+# Signed External-Email Webhook Reconciliation Increment
+
+## Outcome
+
+Nirog now has a provider-facing Resend email-delivery webhook receiver that verifies the **exact raw body** with Svix signature headers before retaining only safe reconciliation metadata. The increment adds replay protection, lifecycle ordering, and immutable receipt state to the existing external-delivery attempt ledger. It does not activate email sending.
+
+The Core revision is `32a5ae7`. Migration `0022_external_delivery_webhook_reconciliation` and the matching targeted API revision both completed successfully on Railway. The unrelated `nirog-core` service stayed pending and was not changed.
+
+## Fail-closed configuration boundary
+
+The webhook route is public only in the narrow sense that it bypasses Clerk browser-session authentication. It is protected independently by Resend/Svix signature verification over the raw request bytes. When `RESEND_WEBHOOK_SIGNING_SECRET` is absent, the route returns `503` before parsing or accepting a provider event. Enabling `resend_email` now requires that signing secret in the API runtime as well as the existing outbound API key and sender address.
+
+> The current deployment has no provider webhook signing secret and no external-provider activation. A safe production check returned `503 application/problem+json`; no valid signature, recipient, message, delivery event, or clinical value was submitted.
+
+## Stored reconciliation evidence
+
+The forward-only migration extends the existing delivery-attempt ledger with an ordered `provider_event_at` field and adds `external_notification_provider_events`.
+
+Each receipt contains the provider code, provider event identifier, provider message identifier, recognized lifecycle type, provider occurrence time, SHA-256 payload digest, reconciliation state, and optional linked attempt identifier. The receipt **does not** store a raw provider payload, recipient email address, email subject/body, or clinical content.
+
+The receipt uniqueness key is `(provider, provider_event_id)`. Repeated webhook delivery becomes a harmless duplicate. A known provider message updates an attempt only if the incoming provider occurrence time is not older than the last reconciled event. The receipt records whether reconciliation was `applied`, `stale`, or `unmatched`; unmatched events remain auditable without inventing an attempt association.
+
+## Event handling
+
+Supported Resend lifecycle events are `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.failed`, `email.bounced`, `email.suppressed`, and `email.complained`. The API translates those into the existing non-clinical attempt status model and generic failure classes. `email.delivered` records mail-server delivery only; it is never treated as proof that a person read a message or took medication.
+
+The HTTP endpoint is `POST /api/v1/integrations/resend/webhooks`. The generated OpenAPI document presents the route prefix-normalized path as `/integrations/resend/webhooks` and documents `202`, `400`, and `503` responses.
+
+## Database and access boundary
+
+RLS on the new receipt table permits access only from an API request context with the exact `notification.external-webhook` purpose. The existing delivery-attempt RLS predicate was extended only to admit that same narrow context alongside its prior profile and dispatcher contexts. Browser sessions, general API calls, and the dispatcher do not receive unbounded receipt access.
+
+## Verification record
+
+Focused tests verify exact Svix raw-body signatures, byte-change rejection, public receiver behavior without bearer authentication, invalid-signature rejection before reconciliation, absent-secret `503`, and the migration’s privacy/RLS contract. The full Core quality gate passed with **111 tests passed** and **9 expected skips**, plus formatting, linting, typechecking, and regenerated Scalar/OpenAPI.
+
+The deployed API’s public OpenAPI artifact contains the new operation and documents `202`, `400`, and `503`. A safe empty production request received the expected fail-closed `503` because no signing secret is configured. This validates the endpoint availability and disabled-provider safeguard, not a real provider-delivery flow.
+
+## Next dependency
+
+Future provider activation still requires an owned, verified sending domain, a provider key, the webhook signing secret, and an explicit owner decision. Until then, durable in-app delivery and its generic SSE refresh hint remain the only active notification delivery behavior.
+
+## References
+
+[1] [Resend: Verify Webhook Requests](https://resend.com/docs/webhooks/verify-webhooks-requests)
+
+[2] [Resend: Webhook Events](https://resend.com/docs/webhooks/introduction)

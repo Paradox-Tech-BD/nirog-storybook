@@ -35,7 +35,7 @@
 
 - [x] Increment 1: establish the operations alert-policy and recovery runbook, then validate the executable and documentation boundaries without creating an unnecessary poller or altering subscription settings.
 - [x] Increment 2: implement profile-scoped notification preferences and consent-aware recipient eligibility, with focused RLS and API coverage.
-- [ ] Increment 3: implement signed external-email webhook reconciliation, replay-safe deduplication, and lifecycle ordering while keeping the external provider disabled unless complete configuration exists.
+- [x] Increment 3: implement signed external-email webhook reconciliation, replay-safe deduplication, and lifecycle ordering while keeping the external provider disabled unless complete configuration exists.
 - [ ] Increment 4: introduce encrypted delivery-registration foundations and client opt-in/revocation contracts required for future push delivery; do not claim a working push provider.
 - [ ] Increment 5: expose truthful owner-facing delivery-channel status through the existing Core/Web path, then complete full acceptance checks and Storybook publication.
 

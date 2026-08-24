@@ -1,0 +1,37 @@
+---
+title: Owner Delivery Status and Final Acceptance
+---
+
+# Owner Delivery Status and Final Acceptance
+
+## Outcome
+
+The Web companion now exposes a narrowly scoped **owner delivery status** panel in the care plan. It uses the existing same-origin Core bridge and reads only two safe Core projections: provider configuration status and provider attempt lifecycle metadata. The UI deliberately treats a ready provider as configuration state, a provider-delivered event as neither read evidence nor adherence evidence, and the durable in-app inbox as a separate real channel.
+
+The panel is rendered only after the companion resolves an owner access context. The component does not initiate delivery-status reads in a delegated care context. The Core read paths remain individually authorized by Core, but the Web presentation is intentionally owner-facing.
+
+| Surface | Included in the owner panel | Explicitly excluded |
+| --- | --- | --- |
+| Provider configuration | Provider kind, readiness state, intended channel | API keys, sender identity, webhook secret |
+| Delivery attempts | Lifecycle state, timestamps, retry count | Recipient, address, body, provider payload, tracking data |
+| In-app reminders | Existing durable inbox records in their own care-plan section | Any assertion that an external message was sent |
+| Push registration | Not read or proxied | Target, installation identifier, encrypted payload, Web Push keys |
+
+## Web boundary
+
+Web revisions `8d8a84d` and `37e9673` add only the following profile-scoped proxy paths:
+
+- `notifications/delivery-status`
+- `notifications/delivery-attempts`
+
+The proxy does **not** admit provider webhook ingress, delivery-registration operations, raw delivery target data, notification-policy mutations, or any internal worker route. The display mapper is pure and separately tested so these distinctions cannot be lost in conditional rendering.
+
+> **Truthful current status:** the configured external provider remains disabled. The UI therefore says that no external channel is configured and does not claim email, SMS, or push delivery. The deployed encrypted registration model remains a future-client foundation, not an activated push service.
+
+## Verification record
+
+The Web suite passed with **9 test files and 18 tests**. It covers the narrow proxy paths, rejects nearby non-allowlisted paths, verifies bounded care-plan read paths, and proves that disabled, ready-without-attempt, and provider-reported-delivered states retain the required no-send/no-read/no-adherence wording. ESLint completed without findings. A Next.js production build completed successfully when run with `NODE_ENV=production`; the unqualified local build warning was an environment-value issue rather than a compilation defect.
+
+The hosted Web deployment for `37e9673` reached its successful deployment state. The exact signed-in public care-plan route was reopened. The active account had zero available profiles and no submitted regimen, so Core-authorized profile delivery reads and the owner profile panel were correctly unavailable; no profile, medication, recipient, provider event, or delivery registration was created merely to force a visual state. The released bundle contains the new static owner-delivery label, confirming that the route was served by the updated artifact. The previous direct SSE validation remains the evidence for the generic `notification.ready` hint; a no-profile session cannot open a profile-scoped SSE stream and no such event is claimed for this final check.
+
+Core’s deployed OpenAPI still documents the delivery-status, delivery-attempt, registration, and signed-webhook contracts. The targeted Core migrator and API deployments for the preceding delivery-registration increment were successful. No external provider key, sender, signed provider event, send command, email, SMS, push target, or actual push notification was introduced during this acceptance work.

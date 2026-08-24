@@ -1,0 +1,42 @@
+---
+title: Encrypted Delivery-Registration Foundation
+---
+
+# Encrypted Delivery-Registration Foundation
+
+## Outcome
+
+Nirog now has a separate, encrypted delivery-registration foundation for future push channels. The new model does **not** reuse `identity.devices.push_token_hash`; that existing record remains hash-only and deliberately non-deliverable. A delivery registration contains an account-owned provider/platform identity, installation and target digests for idempotent lookup, authenticated-encryption ciphertext for the sendable target and Web Push key material, key-version metadata, and a lifecycle state.
+
+Core revision `7db01b0` deployed successfully. The `0023_delivery_registrations` migration completed through the targeted migrator service, followed by the targeted API release. The unrelated `nirog-core` service was not touched.
+
+## Privacy and lifecycle boundary
+
+The delivery target and any Web Push `p256dh` and `auth` material are serialized into AES-256-GCM ciphertext only after authenticated client input. Only SHA-256 digests of the installation and target support duplicate detection. HTTP responses return lifecycle metadata such as provider, platform, active/revoked/invalid state, and timestamps; they never return the endpoint, token, installation identifier, encryption keys, ciphertext, or encryption key version.
+
+The migration permits only an account-self RLS policy for the API role. It has no dispatcher read path and no browser-accessible database path. Registration refresh upserts by account, provider, and installation digest. Revocation changes lifecycle state and timestamp rather than destroying the audit trail.
+
+## Core contract
+
+The authenticated account-self API now provides:
+
+- `POST /api/v1/delivery-registrations` to register or refresh an encrypted FCM or Web Push target. It requires an idempotency key.
+- `DELETE /api/v1/delivery-registrations/{registrationId}` to revoke an account-owned registration. It requires an idempotency key.
+
+The generated OpenAPI document exposes the prefix-normalized paths `/delivery-registrations` and `/delivery-registrations/{registrationId}`. The deployed artifact documents the `POST` responses `201`, `400`, `401`, `429`, and `503`, and the `DELETE` responses `204`, `400`, `401`, `404`, and `429`.
+
+The runtime accepts a base64-encoded 32-byte `NIROG_DELIVERY_REGISTRATION_ENCRYPTION_KEY` only when configured. Without this key, a validated authenticated registration attempt fails closed as `503`; the endpoint will never persist a plaintext target. The production contract was checked only for operation metadata and a deliberately incomplete unauthenticated request, which returned the expected problem response. No valid delivery target, installation identifier, token, or Web Push key was sent to production.
+
+## Provider separation
+
+This is not an FCM sender, Web Push sender, service-worker deployment, VAPID configuration, mobile SDK integration, or a claim that push is active. FCM requires registration lifecycle updates and stale-token handling, while Web Push requires an active service worker and endpoint encryption material. [1] [2] Those provider and client components remain future, separately testable increments.
+
+## Verification record
+
+Focused tests prove ciphertext does not contain the plaintext sendable target, missing cipher fails closed, malformed Web Push/provider combinations are rejected before request-scope persistence, HTTP responses omit all sendable material, and the migration contains account-self RLS and no repurposed device ciphertext. The full Core quality gate passed with **115 tests passed** and **9 expected skips**, plus formatting, linting, typechecking, and regenerated Scalar/OpenAPI.
+
+## References
+
+[1] [Firebase: Best practices for FCM registration management](https://firebase.google.com/docs/cloud-messaging/manage-tokens)
+
+[2] [MDN: Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API)

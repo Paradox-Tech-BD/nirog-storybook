@@ -1,0 +1,63 @@
+---
+title: Operations Alert Policy and Recovery Runbook
+---
+
+# Operations Alert Policy and Recovery Runbook
+
+## Purpose and activation boundary
+
+Nirog now has a sealed, aggregate-only operations snapshot and independently observable API, dispatcher, ML-worker, and migrator deployments. This runbook turns those signals into an operator decision process without creating a new polling worker, retaining patient data in a dashboard, or representing an unconfigured channel as an active alert.
+
+Railway’s built-in monitors can send notifications for service CPU, RAM, disk, and network thresholds, but that capability requires the relevant Railway plan. [1] The runbook therefore uses a two-stage policy: **observe first**, then activate only those platform monitors and application-level alert routes for which an owner, destination, threshold, and response procedure have all been selected.
+
+> No recurring Manus task, browser-accessible operations route, or permanent polling process is part of this increment. The present snapshot is a sealed diagnostic input, not a reason to add a cost-bearing service without a selected alert destination.
+
+## Signal ownership
+
+### Railway service and release signals
+
+The release owner watches the API, dispatcher, ML worker, and migrator deployment state. A failed migrator deployment blocks schema-dependent release progression even if API liveness is healthy. Railway native monitors are appropriate for service resource saturation once the plan permits them. [1]
+
+### Application lifecycle signals
+
+The internal operations snapshot supplies only aggregate counts and ages: claimable outbox work, dead-lettered outbox work, OCR retry/dead-letter work, and the age of the oldest unread durable inbox record. The route requires the existing worker secret and must never be proxied to a browser session. A rising inbox age is a product signal, not proof that a notification failed: the durable inbox remains authoritative and an unread record can be a normal user choice.
+
+## Alert-policy record
+
+Before an alert is activated, the release owner records the following bounded policy for **one signal at a time**.
+
+1. The metric source and its aggregation window are defined. The source must be a Railway resource/deployment signal or the sealed aggregate snapshot; it cannot be a clinical field, prescription record, recipient address, or raw provider payload.
+2. A warning and critical condition are chosen from observed baseline behavior. The policy does not invent universal thresholds because queue capacity, provider quota, and release workload differ by environment.
+3. One accountable owner and one delivery destination are selected. If neither exists, the policy remains observe-only.
+4. The containment action, recovery action, and verification query are recorded before activation. No alert should tell an operator to requeue, replay, or mutate clinical data without a separate controlled procedure.
+5. Every policy change is reviewed with the same deployment record that identifies its release revision, test evidence, and rollback path.
+
+## Recovery playbooks
+
+### Claimable outbox or aged work
+
+First confirm that the dispatcher service is deployed and healthy, then examine safe structured failure classes and lease behavior. Contain a defective deployment or provider adapter before replaying anything. Recovery is verified by a returning-to-baseline aggregate snapshot and by the normal idempotent event lifecycle, not by manually asserting completion.
+
+### Dead-lettered outbox or OCR work
+
+Treat dead-letter growth as a release, worker, schema, callback-authentication, or external-provider classification problem. Preserve redacted evidence and identify the safe failure class. The operator must not inspect stored prescription bytes or convert a notification/reminder record into a dose outcome. A replay, if ever authorized, follows its dedicated recovery procedure and uses existing idempotency constraints.
+
+### Inbox-age increase
+
+Distinguish a system delay from ordinary unread user state. Confirm durable inbox persistence and, where relevant, the generic SSE refresh route. Do not send a new external message, mark a dose outcome, or change a reminder merely because a record remains unread.
+
+### Migrator deployment failure
+
+Stop release progression. Review the targeted migration output and release compatibility, then restore a compatible application version or correct a forward-only migration plan. API liveness cannot substitute for successful migration evidence.
+
+## Validation evidence for this runbook
+
+The operations snapshot was repaired to query the durable inbox `unread` lifecycle state and to reach its independently sealed worker-secret guard rather than being stopped by browser-session authentication. The focused Core route test proves `401` without the worker credential and aggregate-only output with it. The complete Core verification gate passed, followed by a targeted successful API deployment.
+
+This runbook was validated as a documentation and boundary increment: the Storybook build must pass; no Railway plan setting, alert destination, provider configuration, schedule, credential, or production data is changed. Future activation requires a selected destination and an owner-approved threshold record.
+
+## References
+
+[1] [Railway: Observability Dashboard and Monitors](https://docs.railway.com/observability)
+
+[2] [Nirog Observability, Operations, and Recovery Architecture](../../system-architecture/09-observability-operations-and-recovery-architecture.md)

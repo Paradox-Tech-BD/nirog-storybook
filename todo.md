@@ -31,14 +31,24 @@
 
 ## Autonomous remaining-increments delivery
 
+- [x] Re-run the signed-in production care-plan and authorized notification checks from the exact route after the final API and dispatcher deployments, recording only aggregate readiness and transport outcomes.
+- [x] Research, compare, and prioritize the next implementation increments against the deployed Core, Web, dispatcher, ML, delivery-adapter, and operations architecture; publish only evidence-supported recommendations.
+
 - [x] Implement a Clerk-authenticated, profile-authorized Core notification-hint stream that preserves the durable inbox as source of truth and never carries clinical payloads.
 - [x] Extend the Web companion to receive the authorized live refresh hint, re-read the durable inbox, reconnect safely, and remain functional when streaming is unavailable.
 - [x] Apply and verify a scoped formatting-only Core cleanup so the complete repository verification command passes under the supported runtime without behavioral change.
 - [x] Add an external-delivery adapter contract, provider-health model, delivery-attempt audit path, and Scalar documentation; activate a real provider only when valid environment configuration exists.
 - [x] Add aggregate operability signals for inbox delivery lag, failed/dead-lettered outbox work, ML retry exhaustion, and migration failure, then document ownership and recovery.
+- [x] Repair the operations snapshot’s stale unread-inbox column and its Clerk-session interception; add a protected endpoint regression test and deploy only the targeted API revision.
+- [ ] Define and configure the production alert policy for resource/deployment signals, subject to the chosen Railway plan and an explicit alert destination.
+- [ ] Design and implement profile-scoped notification preferences and recipient eligibility before enabling any external notification provider.
+- [ ] Implement a signed provider-webhook reconciliation path only after the selected external-email provider domain and credentials are configured.
+- [ ] Introduce separate encrypted delivery registrations and a client opt-in lifecycle before claiming real push delivery.
 - [ ] Run final Core, dispatcher, Web, and production aggregate-only acceptance checks; publish Storybook and API documentation updates through normal main-to-next synchronization.
 
 > **Autonomous delivery increment — 24 August 2026:** Core and the Web companion now support a profile-authorized SSE `notification.refresh` hint through the existing same-origin proxy. The event contains no clinical payload and the companion always re-reads the durable inbox; a bounded connection and ordinary read fallback preserve behavior when streaming is unavailable. Core `pnpm verify` now passes after a formatting-only baseline commit. The optional Resend email adapter, profile-scoped delivery-attempt ledger, provider status, and authenticated audit read are deployed but disabled because no provider configuration is present; no external delivery has been attempted or claimed. The forward-only ledger migration completed successfully. A protected internal operations snapshot reports only aggregate outbox claim/dead-letter counts, OCR retry/dead-letter counts, oldest unacknowledged inbox age, and the explicit requirement to monitor migrator failures through deployment monitoring. Targeted API, migrator, and disabled-provider dispatcher revisions completed successfully. The unrelated `nirog-core` release was not touched.
+
+> **Corrected production validation and roadmap record — 24 August 2026:** the prior notification probe used an invalid singular path. A fresh signed-in browser check of the documented plural notification-stream route received the generic `notification.ready` hint. The exact care-plan route subsequently reloaded successfully, with one authorized profile, an array-shaped medication response containing three authorized regimen summaries, no remaining loading/empty-regimen state after settlement, and three regimen select options. No medication or identity values were collected. A standalone browser-context transition to `about:blank` occurred only after a renderer/view operation; the exact route was reopened directly and the settled checks passed, so it is not recorded as an application-page failure. The new Core API revision repairs the operations snapshot query to use the durable inbox’s `unread` lifecycle state and allows the route to reach its independently sealed worker-secret guard rather than being intercepted by Clerk session authentication. Focused route coverage proves `401` without the worker credential and aggregate-only success with it; the complete Core verification suite passed with 101 tests passed and nine expected skips. The targeted `@nirog/api` deployment reached Railway success. The unrelated `nirog-core` release remains untouched.
 
 ## Complete end-to-end acceptance recovery
 

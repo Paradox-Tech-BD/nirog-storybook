@@ -1,0 +1,85 @@
+---
+title: Post-Deployment Validation and Next Roadmap
+---
+
+# Post-Deployment Validation and Next Roadmap
+
+## Purpose
+
+This record closes the corrected post-deployment browser validation and sets the next delivery order for Nirog’s medication workflow. It distinguishes verified durable in-app behavior from planned provider delivery and does not retain medication, prescription, profile, recipient, or credential data.
+
+## Corrected browser validation
+
+The prior stream check used an invalid singular path. The documented plural stream path was then checked from a signed-in same-origin session and emitted the generic `notification.ready` event. That is the expected SSE handshake: the client must re-read the durable inbox, and the event carries no clinical content.
+
+The exact care-plan route was reopened directly after the API deployment. After the client settled, the aggregate read found one authorized profile and an array-shaped medication response with three authorized regimen summaries. The page no longer showed its loading or no-regimen empty state, and the regimen selector contained three available choices. These checks establish that the prior zero-regimen observation was not a confirmed data-loss event or a response-wrapper incompatibility.
+
+> A standalone browser context returned to `about:blank` after a renderer/view operation. The route was then opened again explicitly and completed the normal signed-in validation. This is recorded as browser-context behavior, not as a Nirog page failure.
+
+## Operations snapshot repair
+
+The internal operations snapshot initially referenced a removed inbox column and was also intercepted by browser-session authentication before its intended sealed worker-secret guard could run. The repaired route now measures the oldest row in the durable `unread` inbox state and bypasses only Clerk session authentication; it still returns `401` when the independently sealed worker credential is absent.
+
+The new endpoint regression test proves both branches against an injected database seam and asserts that the query uses the `unread` lifecycle predicate. The complete Core quality gate then passed, and the targeted API deployment completed successfully. The unrelated pending Core service release was left untouched.
+
+## Verified present state
+
+### Durable product behavior
+
+The profile-authorized in-app inbox remains the notification source of truth. The SSE connection is a bounded generic refresh hint, and ordinary durable reads continue to work when the stream is unavailable. The Care Plan presents the existing authorized regimen summaries after settlement.
+
+### External provider behavior
+
+The optional email adapter, attempt ledger, provider-status endpoint, and attempt-audit endpoint are deployed but **disabled**. No email, SMS, or push delivery has been sent or claimed. Resend requires a verified owned sending domain and an API key before sending can be enabled; its API idempotency window is 24 hours, so Nirog’s durable attempt ledger remains necessary for longer-lived audit and recovery. [1] [2]
+
+### Operations behavior
+
+Railway provides resource, log, and deployment observability. Its built-in alert monitors can cover CPU, RAM, disk, and network thresholds but require a Pro plan; therefore they are a deployment decision rather than an assumed capability. [3] Application-level queue and inbox signals remain available through the sealed aggregate snapshot, not through browser sessions.
+
+## Prioritized roadmap
+
+### Priority 1 — Operational alert policy and runbook
+
+First define the actual alert thresholds, response owner, notification destination, and release-blocker rule for API, dispatcher, worker, and migrator health. If the selected Railway plan supports monitors, configure resource/deployment monitors there. Do not deploy a new continuous poller merely to exercise the snapshot endpoint. A separate application-level monitor should be introduced only after its cadence and alert receiver are selected.
+
+### Priority 2 — Granular delivery eligibility and preferences
+
+Before activating any external channel, replace the coarse account-level notification switch with profile-scoped policy: event class, enabled channel, quiet hours, timezone, effective dates, and recipient eligibility. Extend the existing owner-controlled consent model rather than copying it. Withdrawal must stop future external attempts while retaining the non-sensitive attempt history already needed for audit.
+
+### Priority 3 — Provider activation and signed webhook reconciliation
+
+When an owned domain, provider key, and explicit product decision exist, enable the email adapter in a controlled environment. Add verified webhook intake, raw-payload signature checking, deduplication by provider delivery identifier, timestamp-ordered lifecycle reconciliation, bounce/suppression handling, and aggregate monitoring. Webhooks are at-least-once and may arrive out of order, so the application must not infer final status from a send request alone. [4] A provider `delivered` event means delivery to a mail server, not that a person read the message or took a dose. [5]
+
+### Priority 4 — Real push, as a distinct product increment
+
+Push cannot be enabled from the present hash-only device record. Implement a separate encrypted delivery-registration model with a digest for lookup, provider/platform metadata, opt-in state, refresh time, revocation state, and key-rotation metadata. FCM requires the server to retain current client registration identifiers and timestamps, while invalid/stale registrations must be removed after conclusive provider failures. [6] Web Push likewise needs an active service worker and an endpoint plus encryption material; the endpoint is a confidential capability URL. [7] [8]
+
+### Priority 5 — Owner-visible delivery channel status
+
+After the policy model is available, expose a concise owner-facing statement of active channels and last non-sensitive delivery state through the existing Core endpoints and same-origin proxy. While the provider remains disabled, the UI should say that durable in-app delivery is active and external delivery is unavailable; it must not imply that an email, SMS, or push was dispatched.
+
+## Deliberate deferrals
+
+A primary Neon-to-Supabase migration remains out of scope: SSE already satisfies the immediate in-app refresh requirement without moving the RLS/custom-role architecture. A full OpenTelemetry collector/backend stack is also deferred. OpenTelemetry is vendor-neutral and valuable for traces, metrics, and logs, but the Railway reference architecture adds several services and is disproportionate before the basic alert policy is selected. [9] [10]
+
+## References
+
+[1] [Resend: Introduction](https://resend.com/docs/introduction)
+
+[2] [Resend: Idempotency Keys](https://resend.com/docs/dashboard/emails/idempotency-keys)
+
+[3] [Railway: Observability Dashboard and Monitors](https://docs.railway.com/observability)
+
+[4] [Resend: Managing Webhooks](https://resend.com/docs/webhooks/introduction)
+
+[5] [Resend: `email.delivered` Event](https://resend.com/docs/webhooks/emails/delivered)
+
+[6] [Firebase Cloud Messaging: Registration Management](https://firebase.google.com/docs/cloud-messaging/manage-tokens)
+
+[7] [MDN: Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API)
+
+[8] [W3C: Push API](https://www.w3.org/TR/push-api/)
+
+[9] [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
+
+[10] [Railway: Deploy an OpenTelemetry Collector and Backend](https://docs.railway.com/guides/deploy-an-otel-collector-stack)

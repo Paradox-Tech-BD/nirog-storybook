@@ -39,7 +39,7 @@ The dispatcher now contains an optional, disabled-by-default email adapter contr
 
 ## Operability signals
 
-The internal operations snapshot is protected by the existing internal-worker secret and returns aggregate-only values. It covers claimable and dead-lettered outbox work, OCR retry/dead-letter state, and oldest unacknowledged in-app inbox age. Migration execution itself remains observable through the targeted migrator deployment status; this is intentionally reported as an external-monitoring responsibility rather than fabricated as a database fact.
+The internal operations snapshot is protected by the existing internal-worker secret and returns aggregate-only values. It covers claimable and dead-lettered outbox work, OCR retry/dead-letter state, and oldest **unread** in-app inbox age. The snapshot route is exempt from browser-session authentication only so its own sealed worker-secret guard can run; it is not browser-exposed or public. Migration execution itself remains observable through the targeted migrator deployment status; this is intentionally reported as an external-monitoring responsibility rather than fabricated as a database fact.
 
 | Signal | Owner | Recovery direction |
 |---|---|---|
@@ -51,4 +51,4 @@ The internal operations snapshot is protected by the existing internal-worker se
 
 ## Verification
 
-The Core complete verification command passed after the formatting-only cleanup, including formatting, lint, typechecking, and tests. The Stream and external-delivery architecture include focused contract and migration tests. Targeted API and migrator deployments completed successfully. The operational snapshot is not exposed through the browser proxy, so user sessions cannot obtain platform-wide aggregate operational data.
+The Core complete verification command passed after the formatting-only cleanup, including formatting, lint, typechecking, and tests. A later focused operations-snapshot route test proved the `401` worker-secret boundary and the safe aggregate response. The stream and external-delivery architecture include focused contract and migration tests. Targeted API and migrator deployments completed successfully. The operational snapshot is not exposed through the browser proxy, so user sessions cannot obtain platform-wide aggregate operational data.

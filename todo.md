@@ -39,6 +39,11 @@
 - [x] Increment 4: introduce encrypted delivery-registration foundations and client opt-in/revocation contracts required for future push delivery; do not claim a working push provider.
 - [x] Increment 5: expose truthful owner-facing delivery-channel status through the existing Core/Web path, then complete full acceptance checks and Storybook publication.
 
+## Next delivery research increment
+
+- [x] Research provider activation readiness, browser/mobile push client lifecycle, and delivery observability from primary vendor sources without enabling a provider.
+- [x] Compare the viable next increments against deployed Nirog boundaries, select a recommended implementation scope, and publish an implementation-ready decision record.
+
 - [x] Re-run the signed-in production care-plan and authorized notification checks from the exact route after the final API and dispatcher deployments, recording only aggregate readiness and transport outcomes.
 - [x] Research, compare, and prioritize the next implementation increments against the deployed Core, Web, dispatcher, ML, delivery-adapter, and operations architecture; publish only evidence-supported recommendations.
 

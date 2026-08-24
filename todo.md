@@ -44,6 +44,14 @@
 - [x] Research provider activation readiness, browser/mobile push client lifecycle, and delivery observability from primary vendor sources without enabling a provider.
 - [x] Compare the viable next increments against deployed Nirog boundaries, select a recommended implementation scope, and publish an implementation-ready decision record.
 
+## Sequential post-research implementation
+
+- [x] Increment 6: implement an owner-controlled Web workspace for existing notification policies, including recipient eligibility, intended channel, quiet hours, and withdrawal, without provider activation.
+- [ ] Increment 7: implement browser push opt-in, service-worker lifecycle, encrypted registration synchronization, and revocation without a provider send path.
+- [ ] Increment 8: prepare and validate controlled external-email activation prerequisites; do not activate a provider without a verified sender, signed ingress configuration, and a controlled test plan.
+- [ ] Increment 9: implement FCM sender orchestration, provider failure classification, registration invalidation, and truthful delivery status only after client and credential prerequisites exist.
+- [ ] Increment 10: perform aggregate-only end-to-end acceptance and publish the final sequential delivery record.
+
 - [x] Re-run the signed-in production care-plan and authorized notification checks from the exact route after the final API and dispatcher deployments, recording only aggregate readiness and transport outcomes.
 - [x] Research, compare, and prioritize the next implementation increments against the deployed Core, Web, dispatcher, ML, delivery-adapter, and operations architecture; publish only evidence-supported recommendations.
 

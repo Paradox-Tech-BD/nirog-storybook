@@ -1,0 +1,33 @@
+---
+title: Owner Notification-Policy Workspace Increment
+---
+
+# Owner Notification-Policy Workspace Increment
+
+## Outcome
+
+Nirog Web now provides an owner-controlled notification-policy workspace at `/notification-policies`. It exposes the existing Core policy commands through the same-origin bridge and makes the policy boundary explicit: a policy records authorized delivery intent, but is not evidence of provider configuration, submission, delivery, reading, or adherence.
+
+The release consists of Web revisions `8ef4577` and `f204094`. The latter fixes a shared transport defect found during the controlled withdrawal test: a successful `204 No Content` response is now accepted as a valid idempotent mutation result rather than incorrectly reported as an unreadable Core response.
+
+## Scope and boundary
+
+| Capability | Implemented behavior | Deliberate exclusion |
+| --- | --- | --- |
+| Owner policy list | Reads safe policy lifecycle metadata only after resolving owner access context | No delegated policy view or mutation control |
+| Create/reactivate | Uses the existing idempotent `PUT` contract for event class, intended channel, timezone, and optional complete quiet-hours pair | No provider activation or send |
+| Withdraw | Uses the existing idempotent `DELETE` contract scoped by recipient, event class, and channel | No cancellation claim for a provider message |
+| Recipient selection | Shows only “profile owner” or a grant-role label needed for eligible selection | No recipient email, phone number, address, or device identifier |
+| Proxy boundary | Allows only policy collection and selected-policy paths | No webhook ingress, delivery registration, target, ciphertext, payload, credential, or worker path |
+
+The page includes channel labels for in-app, email, push, and SMS because those are existing Core policy intents. It labels external channels as intent-only, and it keeps in-app intent distinct from materialized durable inbox records. Core remains the decision authority for ownership, active grants, and `notification-delivery` consent.
+
+## Verification record
+
+The Web test suite passed with **11 test files and 22 tests**. New coverage verifies the exact policy proxy paths, rejection of a nearby path, navigation registration, a complete quiet-hours pair, safe Core policy request shape, JSON Core response unwrapping, and valid `204` no-content mutation handling. Linting passed, and the Next.js production build passed with `NODE_ENV=production`.
+
+The hosted deployment for `f204094` completed successfully. A single controlled owner in-app policy was saved through the released page, observed as one active policy record, and then withdrawn through the same page. The repaired client correctly displayed the subsequent withdrawn lifecycle state. No external channel was configured, no provider credential was introduced, no recipient contact material or delivery target was displayed, and no email, SMS, or push was sent.
+
+## Follow-on boundary
+
+The next sequential increment is browser push opt-in and encrypted registration lifecycle. It begins with user-gesture permission, service-worker capability, registration synchronization, and revocation—not a provider sender or a push message. The provider activation and FCM sender increments remain separately gated by their documented external prerequisites.

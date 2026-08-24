@@ -1,0 +1,31 @@
+---
+title: Browser Push Foundation Progress
+---
+
+# Browser Push Foundation Progress
+
+## Implemented source boundary
+
+The browser-push foundation is implemented and published in Core revision `441c06f` and Web revision `99d025b`. It adds an explicit browser-controlled opt-in surface, a minimal service worker, an installable Web manifest, safe same-origin proxy paths, and encrypted Core registration synchronization/revocation integration. It still has **no push sender, no provider credential, no private VAPID material, and no push delivery claim**.
+
+Core adds the authenticated `GET /api/v1/delivery-registrations/web-push/config` capability contract. It returns a public VAPID key only when both encrypted registration persistence and a public VAPID key are configured. It never exposes the registration encryption key, a private VAPID key, provider sender credentials, targets, ciphertext, or registration identifiers through the capability response.
+
+| Layer | Implemented behavior | Explicit safety boundary |
+| --- | --- | --- |
+| Browser UI | Requests permission only after a person selects **Set up browser push** | No automatic prompt; no permission request when capability is unavailable |
+| Service worker | Handles a future push event with a generic Nirog notification and opens the care plan on click | Does not parse, store, or display clinical payload content |
+| Registration command | Submits endpoint and `p256dh`/`auth` material to the existing encrypted Core registration API | Browser target/key material is never rendered back into Web |
+| Revocation | Calls the idempotent self-registration DELETE route, then unsubscribes the local browser subscription | Revocation is not a claim that a provider message was cancelled |
+| Capability gate | Requires both Core encryption-key availability and a public VAPID key | No sender, send adapter, FCM credential, or external delivery |
+
+## Verification record
+
+The Core quality gate passed with **117 tests passed** and **9 expected skips**. It covers the encrypted target boundary, malformed provider/platform rejection, fail-closed registration behavior, public VAPID configuration parsing, and capability disclosure only when both required registration prerequisites exist. The Web suite passed with **12 test files and 23 tests**; ESLint and the production Next.js build also passed. The Web deployment for `99d025b` completed successfully.
+
+The released Web page was reopened in an authenticated session. Its browser-push panel correctly reported that setup was unavailable and did not request browser permission. A read-only same-origin status check showed that the new Core capability endpoint currently returns `404`, so the published Core revision has not yet been verified on the targeted API service. The Web catch path deliberately remains unavailable and passive in this condition.
+
+## Remaining completion boundary
+
+Increment 7 remains open until the targeted Core API service has deployed `441c06f` and a controlled configuration decision is made. Real browser registration requires both `NIROG_DELIVERY_REGISTRATION_ENCRYPTION_KEY` and `NIROG_WEB_PUSH_VAPID_PUBLIC_KEY`; the first is sensitive and must remain API-only, while the second is public but is disclosed only through the authenticated capability endpoint. Neither setting creates a sender or a push message by itself.
+
+The currently available Railway dashboard session did not expose the prior Nirog deployment project, and the sandbox’s read-only Railway Public API request was blocked by the hosting service’s Cloudflare layer. No deployment was guessed, no unrelated Railway service was approved, and no key was configured. Once the targeted API deployment is accessible, the safe next validation is one controlled browser registration and immediate revocation; it must not include provider sending, clinical payloads, or recipient data.

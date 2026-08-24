@@ -48,6 +48,8 @@
 
 - [x] Increment 6: implement an owner-controlled Web workspace for existing notification policies, including recipient eligibility, intended channel, quiet hours, and withdrawal, without provider activation.
 - [ ] Increment 7: implement browser push opt-in, service-worker lifecycle, encrypted registration synchronization, and revocation without a provider send path.
+  - [x] Publish and verify the Core capability contract, Web opt-in surface, service-worker foundation, narrow proxy paths, and no-content revocation handling.
+  - [ ] Deploy Core revision `441c06f` to the targeted API service and configure both the registration encryption key and public VAPID key only when a controlled browser-registration test can be performed; retain the no-send boundary.
 - [ ] Increment 8: prepare and validate controlled external-email activation prerequisites; do not activate a provider without a verified sender, signed ingress configuration, and a controlled test plan.
 - [ ] Increment 9: implement FCM sender orchestration, provider failure classification, registration invalidation, and truthful delivery status only after client and credential prerequisites exist.
 - [ ] Increment 10: perform aggregate-only end-to-end acceptance and publish the final sequential delivery record.
